@@ -179,7 +179,28 @@
     if(oldCategoryVideos.length!==((categories.length-1)*4)){data.categoryVideos=categories.slice(1).flatMap(category=>Array.from({length:4},(_,i)=>({...oldCategoryVideos.find(video=>video.category===category)||{},category,title:oldCategoryVideos.find(video=>video.category===category)?.title||`${category} video ${i+1}`,video:oldCategoryVideos.find(video=>video.category===category)?.video||'',product:oldCategoryVideos.find(video=>video.category===category)?.product||''}))) }
     const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
     localStorage.setItem('rak-cms-data',JSON.stringify(data));
-    const save=async()=>{try{localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Changes saved in this browser');return true}catch(error){console.error(error);showToast('Could not save: browser storage is full');return false}};
+    const isUuid=value=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||''));
+    const persistProduct=async product=>{
+      const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),status:'published'};
+      const query=isUuid(product.id)?_supabase.from('products').update(payload).eq('id',product.id).select('id').single():_supabase.from('products').insert(payload).select('id').single();
+      const {data:stored,error}=await query;
+      if(error)throw error;
+      product.id=stored.id;
+      const imageDelete=await _supabase.from('product_images').delete().eq('product_id',product.id); if(imageDelete.error)throw imageDelete.error;
+      const images=(product.images||[]).filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,image_url,sort_order}));
+      if(images.length){const {error}=await _supabase.from('product_images').insert(images);if(error)throw error;}
+      const variationDelete=await _supabase.from('product_variations').delete().eq('product_id',product.id); if(variationDelete.error)throw variationDelete.error;
+      const variations=(product.variations||[]).map((variation,sort_order)=>({product_id:product.id,name:String(typeof variation==='string'?variation:variation.name||'Default'),price:Number(typeof variation==='string'?product.price:variation.price)||0,sort_order}));
+      if(variations.length){const {error}=await _supabase.from('product_variations').insert(variations);if(error)throw error;}
+    };
+    const persistReview=async review=>{
+      let productId=null;
+      if(review.product){const {data:product,error}=await _supabase.from('products').select('id').eq('name',String(review.product).trim()).limit(1).maybeSingle();if(error)throw error;productId=product?.id||null;}
+      const payload={product_id:productId,title:String(review.title||''),body:String(review.text||''),author:String(review.author||''),rating:Number(review.rating)||5,review_date:review.date,image_url:String(review.image||''),status:'published'};
+      const query=isUuid(review.id)?_supabase.from('reviews').update(payload).eq('id',review.id).select('id').single():_supabase.from('reviews').insert(payload).select('id').single();
+      const {data:stored,error}=await query;if(error)throw error;review.id=stored.id;
+    };
+    const save=async()=>{try{for(const product of data.products)await persistProduct(product);for(const review of data.reviews)await persistReview(review);localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Changes saved to Supabase');return true}catch(error){console.error(error);showToast(`Could not save to Supabase: ${error.message||'check permissions'}`);return false}};
     const showToast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
     const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     function renderOverview(){ $('#statProducts').textContent=data.products.length;$('#statReviews').textContent=data.reviews.length;$('#statShipping').textContent=Number(data.shipping).toLocaleString();$('#statMedia').textContent=Object.values(data.pages).length*2+data.shopVideos.length+data.categoryVideos.length;$('#recentProducts').innerHTML=(data.products.length?data.products.slice(-5).reverse():[]).map(product=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(product.images?.[0]||'')}" alt=""><b>${esc(product.name)}</b></div></td><td>${esc(product.category)}</td><td>PKR ${Number(product.price).toLocaleString()}</td><td><span class="badge">Published</span></td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">No products yet. Add your first product.</div></td></tr>' }

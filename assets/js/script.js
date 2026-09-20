@@ -129,6 +129,48 @@ const cartState = {
 };
 
 const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
+const loadSupabaseContent = async () => {
+  try {
+    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }] = await Promise.all([
+      _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
+      _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false })
+    ]);
+    if (productsError) throw productsError;
+    if (reviewsError) throw reviewsError;
+    if (Array.isArray(remoteProducts)) {
+      products = remoteProducts.map((product) => {
+        const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
+        const images = (product.product_images || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
+        return {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          type: product.category,
+          description: product.short_description || '',
+          fullDescription: product.description || '',
+          images: images.map((image) => image.image_url).filter(Boolean),
+          variations: variations.map((variation) => ({ name: variation.name, price: Number(variation.price) || 0 })),
+          price: Number(variations[0]?.price) || 0
+        };
+      });
+    }
+    if (Array.isArray(remoteReviews)) {
+      const productNames = new Map(products.map((product) => [String(product.id), product.name]));
+      cmsReviews = remoteReviews.map((review) => ({
+        ...review,
+        date: review.review_date || review.date,
+        text: review.body || review.text || '',
+        image: review.image_url || review.image || '',
+        product: productNames.get(String(review.product_id)) || review.product || ''
+      }));
+    }
+    return true;
+  } catch (error) {
+    console.warn('Supabase storefront content unavailable; using cached/API content.', error);
+    return false;
+  }
+};
+
 const loadRemoteContent = async () => {
   if (!API_URL) return false;
   try {
@@ -1250,6 +1292,7 @@ const renderDetailPage = () => {
 const init = async () => {
   loadCart();
   ensureCartPanel();
+  await loadSupabaseContent();
   applyCmsPageMedia();
   renderAnnouncement();
   renderWhatsAppButton();
