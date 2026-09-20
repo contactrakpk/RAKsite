@@ -126,7 +126,7 @@ const loadSupabaseContent = async () => {
     const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }] = await Promise.all([
       _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
       _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
-      _supabase.from('videos').select('*, products(name)').eq('status', 'published').eq('page_slug', 'shop').order('sort_order')
+      _supabase.from('videos').select('*, products(name)').eq('status', 'published').order('page_slug').order('sort_order')
     ]);
     if (productsError) throw productsError;
     if (reviewsError) throw reviewsError;
@@ -160,13 +160,22 @@ const loadSupabaseContent = async () => {
     }
     if (Array.isArray(remoteVideos)) {
       const productById = new Map(products.map((product) => [String(product.id), product]));
-      videoProducts = remoteVideos
+      const normalizedVideos = remoteVideos
         .filter((video) => video.video_url && video.product_id)
         .map((video) => {
           const product = productById.get(String(video.product_id));
-          return product ? { ...product, video: video.video_url, poster: product.images?.[0] || heroImageByCategory.shop } : null;
+          return product ? {
+            ...video,
+            video: video.video_url,
+            product: product.name,
+            category: String(video.page_slug || '').toUpperCase(),
+            linkedProduct: product,
+            poster: product.images?.[0] || heroImageByCategory.shop
+          } : null;
         })
         .filter(Boolean);
+      videoProducts = normalizedVideos.filter((video) => String(video.page_slug).toLowerCase() === 'shop').map((video) => ({ ...video.linkedProduct, video: video.video, poster: video.poster }));
+      categoryCmsVideos = normalizedVideos.filter((video) => String(video.page_slug).toLowerCase() !== 'shop');
     }
     supabaseContentLoaded = true;
     return true;
@@ -190,16 +199,19 @@ const loadRemoteContent = async () => {
       }));
     }
     if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body, image: review.image || review.image_url || '', product: review.product || review.product_name || '' }));
-    if (Array.isArray(remote.videos) && remote.videos.length) categoryCmsVideos = remote.videos;
     if (Array.isArray(remote.videos)) {
       const productByName = new Map(products.map((product) => [product.name, product]));
-      videoProducts = remote.videos
-        .filter((video) => String(video.page_slug || video.pageSlug || '').toLowerCase() === 'shop' && video.video && video.product)
+      const normalizedVideos = remote.videos
+        .filter((video) => video.video && video.product)
         .map((video) => {
           const product = productByName.get(video.product);
-          return product ? { ...product, video: video.video, poster: product.images?.[0] || heroImageByCategory.shop } : null;
+          return product ? { ...product, ...video, video: video.video, poster: product.images?.[0] || heroImageByCategory.shop } : null;
         })
         .filter(Boolean);
+      videoProducts = normalizedVideos.filter((video) => String(video.page_slug || video.pageSlug || '').toLowerCase() === 'shop');
+      categoryCmsVideos = remote.videos
+        .filter((video) => String(video.page_slug || video.pageSlug || '').toLowerCase() !== 'shop')
+        .map((video) => ({ ...video, category: String(video.category || video.page_slug || video.pageSlug || '').toUpperCase() }));
     }
     if (remote.pages || remote.settings) {
       cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
