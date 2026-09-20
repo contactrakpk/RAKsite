@@ -749,7 +749,13 @@ const loadCart = () => {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      cartState.items = parsed;
+      cartState.items = parsed
+        .filter((item) => item && item.name)
+        .map((item) => ({
+          ...item,
+          quantity: Math.max(1, Number(item.quantity) || 1),
+          price: Number(item.price) || 0
+        }));
     }
   } catch (error) {
     console.warn('Failed to parse cart data', error);
@@ -1056,11 +1062,12 @@ const renderShopReviews = () => {
 };
 
 const getQueryParam = (key) => new URLSearchParams(window.location.search).get(key);
+const getProductQueryValue = () => getQueryParam('productId') || getQueryParam('id') || getQueryParam('slug');
 
 const renderDetailPage = () => {
-  const productId = getQueryParam('productId');
+  const productId = getProductQueryValue();
   if (!productId) return;
-  const product = products.find((item) => sameProductId(item.id, productId));
+  const product = products.find((item) => sameProductId(item.id, productId) || String(item.slug || '').toLowerCase() === String(productId).toLowerCase() || String(item.name || '').toLowerCase() === String(productId).toLowerCase());
   if (!product) return;
 
   const mainImage = document.getElementById('detailMainImage');
