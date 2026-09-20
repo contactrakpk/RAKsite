@@ -214,6 +214,10 @@
     async function deleteProductByIndex(index){
       const product=data.products[index];
       if(!product) return;
+      if(isUuid(product.id)){
+        const {error}=await _supabase.from('products').delete().eq('id',product.id);
+        if(error){console.error(error);showToast(`Could not delete from Supabase: ${error.message||'check permissions'}`);return;}
+      }
       data.products.splice(index,1);
       if(await save())renderAll();
     }

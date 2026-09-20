@@ -129,6 +129,7 @@ const cartState = {
 };
 
 const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
+let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
     const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }] = await Promise.all([
@@ -164,6 +165,7 @@ const loadSupabaseContent = async () => {
         product: productNames.get(String(review.product_id)) || review.product || ''
       }));
     }
+    supabaseContentLoaded = true;
     return true;
   } catch (error) {
     console.warn('Supabase storefront content unavailable; using cached/API content.', error);
@@ -177,14 +179,14 @@ const loadRemoteContent = async () => {
     const response = await fetch(`${API_URL}/api/content`);
     if (!response.ok) return false;
     const remote = await response.json();
-    if (Array.isArray(remote.products) && remote.products.length >= products.length) {
+    if (!supabaseContentLoaded && Array.isArray(remote.products)) {
       products = remote.products.map((product) => ({
         ...product,
         type: product.type || product.category,
         variations: (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) => typeof variation === 'string' ? { name: variation, price: product.price } : variation)
       }));
     }
-    if (Array.isArray(remote.reviews) && remote.reviews.length >= cmsReviews.length) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body, image: review.image || review.image_url || '', product: review.product || review.product_name || '' }));
+    if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body, image: review.image || review.image_url || '', product: review.product || review.product_name || '' }));
     if (Array.isArray(remote.videos) && remote.videos.length) categoryCmsVideos = remote.videos;
     if (remote.pages || remote.settings) {
       cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
