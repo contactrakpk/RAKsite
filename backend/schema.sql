@@ -89,5 +89,13 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS orders_public_insert ON orders;
+CREATE POLICY orders_public_insert ON orders FOR INSERT TO anon, authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS orders_authenticated_select ON orders;
+CREATE POLICY orders_authenticated_select ON orders FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS orders_authenticated_delete ON orders;
+CREATE POLICY orders_authenticated_delete ON orders FOR DELETE TO authenticated USING (true);
+
 INSERT INTO settings(key, value) VALUES ('announcement', ''), ('shipping_cost', '180')
 ON CONFLICT (key) DO NOTHING;
