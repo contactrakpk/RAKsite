@@ -1,0 +1,119 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+    <title>Checkout | RAK</title>
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body class="checkout-page-body">
+    <header class="checkout-header">
+      <a href="../index.html" class="logo"><img src="../assets/icons/Logo.png" alt="RAK logo" style="width:120px;height:auto;" /><small>Real . Authentic . Known</small></a>
+      <a href="../index.html" class="checkout-back-link">Continue shopping</a>
+    </header>
+
+    <main class="checkout-page">
+      <div class="checkout-heading">
+        <span>RAK CHECKOUT</span>
+        <h1>Complete your order</h1>
+        <p>Enter your delivery details and choose a payment method.</p>
+      </div>
+
+      <div id="checkoutEmpty" class="checkout-empty" hidden>
+        <h2>Add a product first</h2>
+        <p>Your cart is empty. Add something you love before checking out.</p>
+        <a class="checkout-action" href="../index.html">Continue shopping</a>
+      </div>
+
+      <div id="checkoutContent" class="checkout-layout">
+        <form class="checkout-form" id="checkoutForm">
+          <section class="checkout-section">
+            <h2>Contact details</h2>
+            <div class="checkout-fields checkout-fields-two">
+              <label>Full name<input name="name" type="text" placeholder="Your full name" required /></label>
+              <label>Mobile number<input name="phone" type="tel" placeholder="03001234567" pattern="[0-9]{11}" maxlength="11" inputmode="numeric" title="Enter exactly 11 digits" required /></label>
+            </div>
+            <label>Email address <span>*</span><input name="email" type="email" placeholder="you@gmail.com" pattern="[^\s@]+@gmail\.com" title="Enter a Gmail address ending in @gmail.com" required /></label>
+          </section>
+
+          <section class="checkout-section">
+            <h2>Delivery address</h2>
+            <label>House / street address<input name="address" type="text" placeholder="House number and street" required /></label>
+            <div class="checkout-fields checkout-fields-two">
+              <label>Area / locality<input name="area" type="text" placeholder="Area or locality" /></label>
+              <label>City<input name="city" type="text" placeholder="Karachi" required /></label>
+            </div>
+            <label>Delivery notes <span>(optional)</span><textarea name="notes" rows="3" placeholder="Any instructions for delivery"></textarea></label>
+          </section>
+
+        </form>
+
+        <aside class="checkout-summary">
+          <h2>Order summary</h2>
+          <div id="checkoutItems" class="checkout-items"></div>
+          <div class="checkout-total-row"><span>Subtotal</span><strong id="checkoutSubtotal">PKR 0</strong></div>
+          <div class="checkout-total-row"><span>Shipping</span><strong id="checkoutShipping">PKR 0</strong></div>
+          <div class="checkout-total-row checkout-grand-total"><span>Total</span><strong id="checkoutTotal">PKR 0</strong></div>
+        </aside>
+
+        <section class="checkout-section checkout-payment-section">
+          <h2>Payment method</h2>
+          <label class="payment-choice selected"><input form="checkoutForm" type="radio" name="payment" value="Cash on Delivery" checked /> <span>Cash on Delivery (COD)</span></label>
+          <label class="payment-choice disabled"><input form="checkoutForm" type="radio" name="payment" value="Card" disabled /> <span>Debit / Credit Card <small>Coming soon</small></span></label>
+          <button class="checkout-submit checkout-submit-after-payment" form="checkoutForm" type="submit">Place order</button>
+        </section>
+        <div class="checkout-confirmation" id="checkoutConfirmation" role="status" hidden>
+          <strong>Order completed successfully.</strong>
+          <span>Your order ID:</span>
+          <div class="order-id-row">
+            <code id="checkoutOrderId"></code>
+            <button type="button" id="copyOrderId" class="copy-order-id">Copy ID</button>
+          </div>
+          <small id="copyOrderStatus" aria-live="polite"></small>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-main">
+        <div class="footer-grid">
+          <div class="footer-column">
+            <h3>ABOUT</h3>
+            <a href="../index.html">Home</a>
+            <a href="../index.html#faqTitle">FAQs</a>
+            <a href="../index.html">About</a>
+          </div>
+          <div class="footer-column">
+            <h3>QUICK LINKS</h3>
+            <a href="cosmetics.html">Shop Cosmetics</a>
+            <a href="jewelery.html">Shop Jewellery</a>
+            <a href="cloths.html">Shop Cloths</a>
+            <a href="sports.html">Shop Sports</a>
+            <a href="gardening.html">Shop Gardening</a>
+          </div>
+          <div class="footer-column footer-contact">
+            <h3>GET IN TOUCH</h3>
+            <a href="tel:+923194307290">+92 319 4307290</a>
+            <a href="mailto:contact.rak.pk@gmail.com">contact.rak.pk@gmail.com</a>
+            <h3 class="footer-follow-title">FOLLOW US</h3>
+            <div class="footer-socials">
+              <a href="#" aria-label="Facebook"><img src="../assets/icons/facebook.svg" alt="Facebook" /></a>
+              <a href="#" aria-label="Instagram"><img src="../assets/icons/instagram.svg" alt="Instagram" /></a>
+              <a href="#" aria-label="TikTok"><img src="../assets/icons/tiktok.svg" alt="TikTok" /></a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p class="footer-credit">website created and maintained by Abdullah_rauf to contact <a class="footer-whatsapp" href="https://wa.me/923278364657">03278364657</a></p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/script.js?v=20260920categoryfix"></script>
+  </body>
+</html>
+

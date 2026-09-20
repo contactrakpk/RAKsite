@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+    <title>Product Detail</title>
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body class="product-detail-body">
+    <header class="site-header">
+      <div class="announce" role="status" aria-live="polite"><span class="announce-text" id="announceText">7Days Return Available</span></div>
+      <nav class="navbar">
+        <div class="nav-left">
+          <button class="category-inline-toggle" type="button" aria-label="Open categories" aria-expanded="false">
+            <img src="../assets/icons/category.svg" class="category-icon-svg" alt="Categories" />
+          </button>
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" class="search-icon">
+              <circle cx="11" cy="11" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input type="text" placeholder="Search" />
+          </label>
+        </div>
+
+        <div class="nav-center">
+          <a href="../index.html" class="logo"><img src="../assets/icons/Logo.png" alt="RAK logo" style="width:120px;height:auto;" /><small>Real . Authentic . Known</small></a>
+        </div>
+
+        <div class="nav-right">
+          <a href="#" class="icon-link cart-link" aria-label="Cart">
+            <img src="../assets/icons/Cart.svg" class="icon-img cart-img" alt="Cart" />
+            <span class="cart-badge" aria-hidden="true">0</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="category-bar" aria-label="Category navigation">
+        <a href="../index.html" data-category="Shop" aria-label="Shop" title="Shop"><img src="../assets/icons/shop.svg" alt="Shop" /><span>Shop</span></a>
+        <a href="cosmetics.html" data-category="Cosmetics" aria-label="Cosmetics" title="Cosmetics"><img src="../assets/icons/cosmetics.svg" alt="Cosmetics" /><span>Cosmetics</span></a>
+        <a href="jewelery.html" data-category="Jewelery" aria-label="Jewelery" title="Jewelery"><img src="../assets/icons/jewelry.svg" alt="Jewelery" /><span>Jewelery</span></a>
+        <a href="sports.html" data-category="Sports" aria-label="Sports" title="Sports"><img src="../assets/icons/sports.svg" alt="Sports" /><span>Sports</span></a>
+        <a href="cloths.html" data-category="Cloths" aria-label="Cloths" title="Cloths"><img src="../assets/icons/cloths.svg" alt="Cloths" /><span>Cloths</span></a>
+        <a href="gardening.html" data-category="Gardening" aria-label="Gardening" title="Gardening"><img src="../assets/icons/gardening.svg" alt="Gardening" /><span>Gardening</span></a>
+      </div>
+    </header>
+
+    <main class="product-detail-page">
+      <div class="detail-grid">
+        <div class="detail-gallery">
+          <div class="detail-main-image">
+            <img id="detailMainImage" src="" alt="Product image" />
+            <button type="button" class="detail-zoom-btn" id="detailZoomBtn" aria-label="Zoom product image">⌕</button>
+          </div>
+          <div class="detail-thumb-row" id="detailThumbs"></div>
+        </div>
+
+        <div class="detail-summary">
+          <span class="detail-meta" id="detailCategory">Category</span>
+          <h1 id="detailName">Product Name</h1>
+          <p class="detail-type" id="detailType">Type</p>
+          <p class="detail-short-description" id="detailShortDescription"></p>
+
+          <div class="detail-variations" id="detailVariations"></div>
+
+          <div class="detail-price" id="detailPrice">PKR 0</div>
+
+          <div class="quantity-panel" aria-label="Cart quantity">
+            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease quantity">-</button>
+            <span id="detailQty">1</span>
+            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase quantity">+</button>
+          </div>
+
+          <button type="button" class="primary-btn add-to-cart-btn">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="detail-zoom-modal" id="detailZoomModal" aria-hidden="true">
+        <button type="button" class="detail-zoom-close" id="detailZoomClose" aria-label="Close enlarged product image">×</button>
+        <img id="detailZoomImage" src="" alt="Enlarged product image" />
+      </div>
+
+      <section class="product-description-section" aria-labelledby="productDescriptionTitle">
+        <h2 id="productDescriptionTitle">Product description</h2>
+        <p class="detail-description" id="detailDescription"></p>
+      </section>
+
+      <section class="related-products-section">
+        <div class="section-header">
+          <h2>Related products</h2>
+        </div>
+        <div class="related-row" id="relatedProducts"></div>
+      </section>
+
+      <section class="reviews-section detail-reviews-section" id="detailReviews" aria-labelledby="detailReviewsTitle"></section>
+      <section class="faq-section detail-faq-section" id="detailFaq" aria-labelledby="detailFaqTitle"></section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-main">
+        <div class="footer-grid">
+          <div class="footer-column">
+            <h3>ABOUT</h3>
+            <a href="../index.html">Home</a>
+            <a href="#detailFaqTitle">FAQs</a>
+            <a href="../index.html">About</a>
+          </div>
+          <div class="footer-column">
+            <h3>QUICK LINKS</h3>
+            <a href="cosmetics.html">Shop Cosmetics</a>
+            <a href="jewelery.html">Shop Jewellery</a>
+            <a href="cloths.html">Shop Cloths</a>
+            <a href="sports.html">Shop Sports</a>
+            <a href="gardening.html">Shop Gardening</a>
+          </div>
+          <div class="footer-column footer-contact">
+            <h3>GET IN TOUCH</h3>
+            <a href="tel:+923194307290">+92 319 4307290</a>
+            <a href="mailto:contact.rak.pk@gmail.com">contact.rak.pk@gmail.com</a>
+            <h3 class="footer-follow-title">FOLLOW US</h3>
+            <div class="footer-socials">
+              <a href="#" aria-label="Facebook"><img src="../assets/icons/facebook.svg" alt="Facebook" /></a>
+              <a href="#" aria-label="Instagram"><img src="../assets/icons/instagram.svg" alt="Instagram" /></a>
+              <a href="#" aria-label="TikTok"><img src="../assets/icons/tiktok.svg" alt="TikTok" /></a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p class="footer-credit">website created and maintained by Abdullah_rauf to contact <a class="footer-whatsapp" href="https://wa.me/923278364657">03278364657</a></p>
+        </div>
+      </div>
+    </footer>
+
+    <div class="cart-backdrop" id="cartBackdrop"></div>
+    <aside class="cart-panel" id="cartPanel" aria-label="Shopping cart">
+      <header>
+        <div>
+          <h2>Your Cart</h2>
+          <p class="panel-subtitle">2 items</p>
+        </div>
+        <button type="button" class="close-panel" aria-label="Close cart">×</button>
+      </header>
+      <div class="cart-body" id="cartItems"></div>
+      <div class="summary-panel">
+        <div class="summary-row"><span>Subtotal</span><strong id="cartSubtotal">PKR 0</strong></div>
+        <div class="summary-row summary-total-row"><span>Total</span><strong id="cartTotal">PKR 0</strong></div>
+        <button type="button" class="checkout-btn">Proceed to Checkout</button>
+      </div>
+    </aside>
+
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/script.js?v=20260920categoryfix"></script>
+  </body>
+</html>
+
