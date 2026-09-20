@@ -1339,7 +1339,7 @@ const init = async () => {
   if (window.location.pathname.includes('product-detail')) {
     renderDetailPage();
   }
-  if (window.location.pathname.endsWith('checkout.html')) {
+  if (window.location.pathname.includes('checkout')) {
     renderCheckoutPage();
   }
   const remoteLoaded = await loadRemoteContent();
@@ -1352,7 +1352,7 @@ const init = async () => {
     renderShopReviews();
     updateCartUI();
     if (window.location.pathname.includes('product-detail')) renderDetailPage();
-    if (window.location.pathname.endsWith('checkout.html')) renderCheckoutPage();
+    if (window.location.pathname.includes('checkout')) renderCheckoutPage();
   }
   restoreScrollPosition();
 };
