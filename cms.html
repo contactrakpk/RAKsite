@@ -200,7 +200,10 @@
       if(review.product){const {data:product,error}=await _supabase.from('products').select('id').eq('name',String(review.product).trim()).limit(1).maybeSingle();if(error)throw error;productId=product?.id||null;}
       const payload={product_id:productId,title:String(review.title||''),body:String(review.text||''),author:String(review.author||''),rating:Number(review.rating)||5,review_date:review.date,image_url:String(review.image||''),status:'published'};
       const query=isUuid(review.id)?_supabase.from('reviews').update(payload).eq('id',review.id).select('id'):_supabase.from('reviews').insert(payload).select('id');
-      const {data:storedRows,error}=await query;if(error)throw error;const stored=storedRows?.[0];if(!stored?.id)throw new Error('Supabase did not return the saved review.');review.id=stored.id;
+      const {data:storedRows,error}=await query;
+      if(error)throw error;
+      const stored=storedRows?.[0];
+      if(stored?.id)review.id=stored.id;
     };
     const save=async()=>{try{for(const product of data.products)await persistProduct(product);for(const review of data.reviews)await persistReview(review);localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Changes saved to Supabase');return true}catch(error){console.error(error);showToast(`Could not save to Supabase: ${error.message||'check permissions'}`);return false}};
     const showToast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
