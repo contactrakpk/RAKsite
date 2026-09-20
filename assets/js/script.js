@@ -1039,16 +1039,25 @@ const renderCheckoutPage = () => {
       total: subtotal + cartState.shipping
     };
     try {
-      const apiUrl = String(window.RAK_API_URL || '').replace(/\/$/, '');
-      if (!apiUrl) throw new Error('Order service is not configured.');
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(order)
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'The order could not be submitted.');
-      const savedOrder = { ...order, id: result.order_number || order.id, createdAt: result.created_at || order.createdAt };
+      const customer = order.customer;
+      const { data: savedRows, error } = await _supabase.from('orders').insert({
+        order_number: order.id,
+        customer_name: customer.name,
+        customer_email: customer.email,
+        customer_phone: customer.phone,
+        address: customer.address,
+        area: customer.area || '',
+        city: customer.city,
+        notes: customer.notes || '',
+        payment_method: customer.payment || 'Cash on Delivery',
+        items: order.items,
+        shipping: order.shipping,
+        total: order.total,
+        status: 'new'
+      }).select('order_number,created_at');
+      if (error) throw error;
+      const savedRow = savedRows?.[0];
+      const savedOrder = { ...order, id: savedRow?.order_number || order.id, createdAt: savedRow?.created_at || order.createdAt };
       const existingOrders = JSON.parse(localStorage.getItem('akWebOrders') || '[]');
       existingOrders.unshift(savedOrder);
       localStorage.setItem('akWebOrders', JSON.stringify(existingOrders));
@@ -1063,8 +1072,9 @@ const renderCheckoutPage = () => {
         if (orderIdElement) orderIdElement.textContent = savedOrder.id;
         confirmation.scrollIntoView({ behavior: 'smooth', block: 'center' });
         window.setTimeout(() => {
+          window.alert(`Order ${savedOrder.id} placed successfully.`);
           window.location.href = '../index.html';
-        }, 5000);
+        }, 300);
       }
     } catch (error) {
       if (submitButton) submitButton.disabled = false;
