@@ -123,14 +123,23 @@ const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
-    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }] = await Promise.all([
+    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }] = await Promise.all([
       _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
       _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
-      _supabase.from('videos').select('*, products(name)').eq('status', 'published').order('page_slug').order('sort_order')
+      _supabase.from('videos').select('*, products(name)').eq('status', 'published').order('page_slug').order('sort_order'),
+      _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement'])
     ]);
     if (productsError) throw productsError;
     if (reviewsError) throw reviewsError;
     if (videosError) console.warn('Supabase shop videos unavailable; continuing with product and review content.', videosError);
+    if (settingsError) console.warn('Supabase settings unavailable; using fallback shipping configuration.', settingsError);
+    if (Array.isArray(remoteSettings)) {
+      const settings=Object.fromEntries(remoteSettings.map((setting)=>[setting.key,setting.value]));
+      if (settings.shipping_cost !== undefined) {
+        cmsData={...(cmsData||{}),shipping:Number(settings.shipping_cost)||0};
+        cartState.shipping=Number(settings.shipping_cost)||0;
+      }
+    }
     if (Array.isArray(remoteProducts)) {
       products = remoteProducts.map((product) => {
         const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
@@ -214,7 +223,7 @@ const loadRemoteContent = async () => {
         .map((video) => ({ ...video, category: String(video.category || video.page_slug || video.pageSlug || '').toUpperCase() }));
     }
     if (remote.pages || remote.settings) {
-      cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
+      cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: supabaseContentLoaded ? cmsData?.shipping : Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
     }
     cartState.shipping = Number(cmsData?.shipping) >= 0 ? Number(cmsData.shipping) : cartState.shipping;
     return true;
