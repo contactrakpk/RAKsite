@@ -557,6 +557,10 @@ const renderVideoShowcase = async () => {
     ...product,
     video: await resolveStoredVideo(product.video)
   })));
+  if (!renderedVideoProducts.length) {
+    container.innerHTML = '<p class="video-showcase-empty">Our featured videos are being updated. Please check back soon.</p>';
+    return;
+  }
   container.innerHTML = renderedVideoProducts.map((product) => `
     <article class="video-product-card" data-product-id="${product.id}" tabindex="0" role="link" aria-label="View ${product.name} details">
       <video autoplay muted loop playsinline preload="metadata" poster="${resolveProductImage(product.poster)}">
