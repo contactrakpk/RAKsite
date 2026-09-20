@@ -58,8 +58,8 @@
       <p>Sign in to access the CMS dashboard.</p>
       <form id="loginForm" class="auth-form">
         <label>
-          Email
-          <input type="email" id="loginEmail" placeholder="admin@rak.com" required />
+          Username
+          <input type="text" id="loginEmail" placeholder="Rakhalid" autocomplete="username" required />
         </label>
         <label>
           Password
@@ -119,6 +119,7 @@
     const { createClient }=supabase;
     const _supabase=window._supabase||createClient('https://yhrxpmglucstpoyddkwy.supabase.co','sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf');
     window._supabase=_supabase;
+    const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
     const setStoredToken=(token)=> token ? localStorage.setItem('rak-admin-token', token) : localStorage.removeItem('rak-admin-token');
     async function readApiResponse(response){
@@ -146,11 +147,12 @@
     }
     document.getElementById('loginForm').addEventListener('submit', async (event)=>{
       event.preventDefault();
-      const email=$('#loginEmail').value.trim();
+      const loginIdentifier=$('#loginEmail').value.trim();
       const password=$('#loginPassword').value.trim();
       const status=$('#authStatus');
       status.textContent='Checking credentials...';
       try {
+        const email=loginIdentifier.includes('@') ? loginIdentifier : SUPABASE_ADMIN_EMAIL;
         const {data,error}=await _supabase.auth.signInWithPassword({ email, password });
         if(error||!data.session){ throw new Error(error?.message || 'Login failed'); }
         setStoredToken(data.session.access_token);

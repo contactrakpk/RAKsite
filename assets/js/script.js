@@ -206,6 +206,8 @@ const getCheckoutPath = () => window.location.pathname.includes('/pages/')
   ? 'checkout.html'
   : 'pages/checkout.html';
 
+const sameProductId = (left, right) => String(left) === String(right);
+
 const closeSearch = () => {
   const searchBox = document.querySelector('.search-box');
   const backdrop = document.querySelector('.search-backdrop');
@@ -419,7 +421,7 @@ const createProductCard = (product) => {
     const btn = event.target.closest('button');
     if (btn) return;
     const detailPath = window.location.pathname.includes('/pages/') ? '../pages/product-detail.html' : 'pages/product-detail.html';
-    window.location.href = `${detailPath}?productId=${product.id}`;
+    window.location.href = `${detailPath}?productId=${encodeURIComponent(product.id)}`;
   });
 
   card.querySelector('.add-cart-card-btn').addEventListener('click', (event) => {
@@ -580,6 +582,25 @@ const renderCategoryPage = async () => {
         </div>
       </section>
     `;
+    videoContainer.querySelectorAll('.video-product-card').forEach((card, index) => {
+      const video = categoryVideos[index];
+      const linked = products.find((product) => product.name === video.product);
+      if (!linked) return;
+      card.dataset.productId = linked.id;
+      card.tabIndex = 0;
+      card.setAttribute('role', 'link');
+      card.setAttribute('aria-label', `View ${linked.name} details`);
+      const openDetails = () => {
+        window.location.href = `${getProductDetailPath()}?productId=${encodeURIComponent(linked.id)}`;
+      };
+      card.addEventListener('click', openDetails);
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openDetails();
+        }
+      });
+    });
     }
   }
 
@@ -736,9 +757,9 @@ const loadCart = () => {
 };
 
 const addToCart = (productId, quantity) => {
-  const product = products.find((item) => item.id === productId);
+  const product = products.find((item) => sameProductId(item.id, productId));
   if (!product) return;
-  const existing = cartState.items.find((item) => item.id === productId);
+  const existing = cartState.items.find((item) => sameProductId(item.id, product.id));
   if (existing) {
     existing.quantity += quantity;
   } else {
@@ -761,13 +782,13 @@ const addProductVariationToCart = (product, variation, quantity) => {
 };
 
 const removeFromCart = (productId) => {
-  cartState.items = cartState.items.filter((item) => item.id !== productId);
+  cartState.items = cartState.items.filter((item) => !sameProductId(item.id, productId));
   saveCart();
   updateCartUI();
 };
 
 const changeCartQuantity = (productId, delta) => {
-  const item = cartState.items.find((entry) => entry.id === productId);
+  const item = cartState.items.find((entry) => sameProductId(entry.id, productId));
   if (!item) return;
   item.quantity = Math.max(1, item.quantity + delta);
   saveCart();
@@ -1039,7 +1060,7 @@ const getQueryParam = (key) => new URLSearchParams(window.location.search).get(k
 const renderDetailPage = () => {
   const productId = getQueryParam('productId');
   if (!productId) return;
-  const product = products.find((item) => item.id === productId);
+  const product = products.find((item) => sameProductId(item.id, productId));
   if (!product) return;
 
   const mainImage = document.getElementById('detailMainImage');
