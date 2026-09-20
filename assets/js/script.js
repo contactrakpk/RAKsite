@@ -1305,7 +1305,7 @@ const init = async () => {
   updateCartUI();
   bindCartEvents();
   bindReviewCarousel();
-  if (window.location.pathname.endsWith('product-detail.html')) {
+  if (window.location.pathname.includes('product-detail')) {
     renderDetailPage();
   }
   if (window.location.pathname.endsWith('checkout.html')) {
@@ -1320,7 +1320,7 @@ const init = async () => {
     await renderCategoryPage();
     renderShopReviews();
     updateCartUI();
-    if (window.location.pathname.endsWith('product-detail.html')) renderDetailPage();
+    if (window.location.pathname.includes('product-detail')) renderDetailPage();
     if (window.location.pathname.endsWith('checkout.html')) renderCheckoutPage();
   }
   restoreScrollPosition();
