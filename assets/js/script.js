@@ -20,11 +20,11 @@ const fetchSupabaseProducts = async () => {
 window.fetchSupabaseProducts = fetchSupabaseProducts;
 
 const categoryMeta = [
-  { key: 'cosmetics', label: 'COSMETICS', href: 'pages/cosmetics.html', banner: 'assets/images/banners/Cosmetic.png' },
-  { key: 'jewelery', label: 'JEWELERY', href: 'pages/jewelery.html', banner: 'assets/images/banners/Jewellery.png' },
-  { key: 'cloths', label: 'CLOTHS', href: 'pages/cloths.html', banner: 'assets/images/banners/Cloths.png' },
-  { key: 'sports', label: 'SPORTS', href: 'pages/sports.html', banner: 'assets/images/banners/Sports.png' },
-  { key: 'gardening', label: 'GARDENING', href: 'pages/gardening.html', banner: 'assets/images/banners/gardening.png' }
+  { key: 'cosmetics', label: 'COSMETICS', href: 'pages/cosmetics.html', banner: 'assets/images/banners/Cosmetic.jpg' },
+  { key: 'jewelery', label: 'JEWELERY', href: 'pages/jewelery.html', banner: 'assets/images/banners/Jewellery.jpg' },
+  { key: 'cloths', label: 'CLOTHS', href: 'pages/cloths.html', banner: 'assets/images/banners/Cloths.jpg' },
+  { key: 'sports', label: 'SPORTS', href: 'pages/sports.html', banner: 'assets/images/banners/Sports.jpg' },
+  { key: 'gardening', label: 'GARDENING', href: 'pages/gardening.html', banner: 'assets/images/banners/gardening.jpg' }
 ];
 
 const categoryProductNames = {
@@ -39,9 +39,9 @@ const heroImageByCategory = {
   shop: 'assets/images/hero/shop.jpg',
   cosmetics: 'assets/images/hero/cosmetics.jpg',
   jewelery: 'assets/images/hero/jewelery.jpg',
-  cloths: 'assets/images/hero/Cloths.png',
-  sports: 'assets/images/hero/Sports.png',
-  gardening: 'assets/images/hero/Gardening.png'
+  cloths: 'assets/images/hero/Cloths.jpg',
+  sports: 'assets/images/hero/Sports.jpg',
+  gardening: 'assets/images/hero/Gardening.jpg'
 };
 
 const legacyDummyNames = new Set([
@@ -543,7 +543,7 @@ const renderCategoryPage = async () => {
   }
 
   const categoryNames = categoryProductNames[categoryKey];
-  const categoryPoster = `assets/images/hero/${category.label.charAt(0) + category.label.slice(1).toLowerCase()}.png`;
+  const categoryPoster = heroImageByCategory[category.key] || heroImageByCategory.shop;
   const configuredVideos = categoryCmsVideos.filter((video) => String(video.category || '').toUpperCase() === category.label);
   const categoryVideos = (await Promise.all(configuredVideos
     .filter((video) => video.video && products.some((product) => product.name === video.product))
