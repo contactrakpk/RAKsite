@@ -1,3 +1,24 @@
+const { createClient } = supabase;
+
+const SUPABASE_URL = 'https://yhrxpmglucstpoyddkwy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+
+const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window._supabase = _supabase;
+
+const fetchSupabaseProducts = async () => {
+  const { data, error } = await _supabase.from('products').select('*');
+  if (error) {
+    console.error('Supabase products fetch failed:', error);
+    return null;
+  }
+
+  console.log('Supabase products:', data);
+  return data;
+};
+
+window.fetchSupabaseProducts = fetchSupabaseProducts;
+
 const categoryMeta = [
   { key: 'cosmetics', label: 'COSMETICS', href: 'pages/cosmetics.html', banner: 'assets/images/banners/Cosmetic.png' },
   { key: 'jewelery', label: 'JEWELERY', href: 'pages/jewelery.html', banner: 'assets/images/banners/Jewellery.png' },
