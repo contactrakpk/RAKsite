@@ -253,8 +253,8 @@
       const requestUrl=new URL('/rest/v1/videos',SUPABASE_URL).toString();
       console.debug('Saving video to Supabase:',{method:isUpdate?'PATCH':'POST',requestUrl,payload});
       const query=isUpdate
-        ? _supabase.from('videos').update(payload).eq('id',video.id)
-        : _supabase.from('videos').insert([payload]);
+        ? _supabase.from('videos').update(payload).eq('id',video.id).select()
+        : _supabase.from('videos').insert([payload]).select();
       const {data,error}=await query;
       if(error){
         console.error('Supabase error:',JSON.stringify(error));
