@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS videos (
   status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published'))
 );
 
+ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS videos_public_read ON videos;
+CREATE POLICY videos_public_read ON videos FOR SELECT TO anon, authenticated USING (status = 'published');
+DROP POLICY IF EXISTS videos_admin_write ON videos;
+CREATE POLICY videos_admin_write ON videos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 CREATE TABLE IF NOT EXISTS reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID REFERENCES products(id) ON DELETE SET NULL,

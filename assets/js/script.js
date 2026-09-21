@@ -126,14 +126,14 @@ const loadSupabaseContent = async () => {
     const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }, { data: remotePages, error: pagesError }] = await Promise.all([
       _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
       _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
-      _supabase.from('videos').select('*, products(name)').eq('status', 'published').order('page_slug').order('sort_order'),
+      _supabase.from('videos').select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status').eq('status', 'published').order('page_slug').order('sort_order'),
       _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
       _supabase.from('pages').select('name,hero_url,banner_url')
     ]);
     if (productsError) throw productsError;
     if (reviewsError) throw reviewsError;
     if (pagesError) throw pagesError;
-    if (videosError) console.warn('Supabase shop videos unavailable; continuing with product and review content.', videosError);
+    if (videosError) throw videosError;
     if (settingsError) console.warn('Supabase settings unavailable; using fallback shipping configuration.', settingsError);
     if (Array.isArray(remoteSettings)) {
       const settings=Object.fromEntries(remoteSettings.map((setting)=>[setting.key,setting.value]));
@@ -175,20 +175,22 @@ const loadSupabaseContent = async () => {
     if (Array.isArray(remoteVideos)) {
       const productById = new Map(products.map((product) => [String(product.id), product]));
       const normalizedVideos = remoteVideos
-        .filter((video) => video.video_url && video.product_id)
+        .filter((video) => video.video_url)
         .map((video) => {
           const product = productById.get(String(video.product_id));
-          return product ? {
+          return {
             ...video,
             video: video.video_url,
-            product: product.name,
+            product: product?.name || '',
             category: String(video.page_slug || '').toUpperCase(),
-            linkedProduct: product,
-            poster: product.images?.[0] || heroImageByCategory.shop
-          } : null;
+            linkedProduct: product || null,
+            poster: video.poster_url || product?.images?.[0] || heroImageByCategory.shop
+          };
         })
         .filter(Boolean);
-      videoProducts = normalizedVideos.filter((video) => String(video.page_slug).toLowerCase() === 'shop').map((video) => ({ ...video.linkedProduct, video: video.video, poster: video.poster }));
+      videoProducts = normalizedVideos
+        .filter((video) => String(video.page_slug || '').toLowerCase() === 'shop' && video.linkedProduct)
+        .map((video) => ({ ...video.linkedProduct, video: video.video, poster: video.poster, videoTitle: video.title }));
       categoryCmsVideos = normalizedVideos.filter((video) => String(video.page_slug).toLowerCase() !== 'shop');
     }
     supabaseContentLoaded = true;
@@ -598,7 +600,7 @@ const renderVideoShowcase = async () => {
   container.innerHTML = renderedVideoProducts.map((product) => `
     <article class="video-product-card" data-product-id="${product.id}" tabindex="0" role="link" aria-label="View ${product.name} details">
       <video autoplay muted loop playsinline preload="metadata" poster="${resolveProductImage(product.poster)}">
-        ${product.video ? `<source src="${resolveProductImage(product.video)}" type="video/mp4" />` : ''}
+        ${product.video ? `<source src="${resolveProductImage(product.video)}" />` : ''}
       </video>
       <div class="video-product-info">
         <img class="video-product-thumb" src="${resolveProductImage(product.poster)}" alt="" aria-hidden="true" />
