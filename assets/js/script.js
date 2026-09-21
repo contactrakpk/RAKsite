@@ -1,7 +1,7 @@
 const { createClient } = supabase;
 
-const SUPABASE_URL = 'https://yhrxpmglucstpoyddkwy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+const SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
+const SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
 const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window._supabase = _supabase;

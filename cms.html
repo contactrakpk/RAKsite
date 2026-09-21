@@ -117,8 +117,11 @@
   <script>
     const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
     const { createClient }=supabase;
-    const _supabase=window._supabase||createClient('https://yhrxpmglucstpoyddkwy.supabase.co','sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf');
+    const SUPABASE_URL=window.RAK_SUPABASE_URL||'https://yhrxpmglucstpoyddkwy.supabase.co';
+    const SUPABASE_ANON_KEY=window.RAK_SUPABASE_ANON_KEY||'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+    const _supabase=window._supabase||createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     window._supabase=_supabase;
+    console.info('CMS Supabase project:',new URL(SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
     const setStoredToken=(token)=> token ? localStorage.setItem('rak-admin-token', token) : localStorage.removeItem('rak-admin-token');
@@ -246,8 +249,10 @@
         sort_order:Number.isInteger(Number(video.sortOrder))?Number(video.sortOrder):0,
         status:'published'
       };
-      console.debug('Saving video to Supabase:',payload);
-      const query=isUuid(video.id)
+      const isUpdate=isUuid(video.id);
+      const requestUrl=new URL('/rest/v1/videos',SUPABASE_URL).toString();
+      console.debug('Saving video to Supabase:',{method:isUpdate?'PATCH':'POST',requestUrl,payload});
+      const query=isUpdate
         ? _supabase.from('videos').update(payload).eq('id',video.id)
         : _supabase.from('videos').insert(payload);
       const {data,error}=await query;
