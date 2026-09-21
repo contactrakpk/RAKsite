@@ -249,13 +249,12 @@
         sort_order:Number.isInteger(Number(video.sortOrder))?Number(video.sortOrder):0,
         status:'published'
       };
-      const isUpdate=isUuid(video.id);
-      const requestUrl=new URL('/rest/v1/videos',SUPABASE_URL).toString();
-      console.debug('Saving video to Supabase:',{method:isUpdate?'PATCH':'POST',requestUrl,payload});
-      const query=isUpdate
-        ? _supabase.from('videos').update(payload).eq('id',video.id).select()
-        : _supabase.from('videos').insert([payload]).select();
-      const {data,error}=await query;
+      const isUpdate = isUuid(video.id);
+      if (isUpdate) {
+        payload.id = video.id;
+      }
+      const { data, error } = await _supabase.from('videos').upsert([payload]).select();
+      
       if(error){
         console.error('Supabase error:',JSON.stringify(error));
         console.error('Supabase videos write failed:',{error,payload});
