@@ -1,5 +1,7 @@
 const { createClient } = supabase;
 
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
 const SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
 const SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
@@ -364,6 +366,7 @@ const bindSearch = () => {
 };
 
 const renderWhatsAppButton = () => {
+  if (window.location.pathname.includes('checkout')) return;
   if (document.querySelector('.whatsapp-float')) return;
 
   const button = document.createElement('a');
@@ -486,6 +489,7 @@ const createProductCard = (product) => {
   const variations = (product.variations?.length ? product.variations : []).map((variation) =>
     typeof variation === 'string' ? variation : variation.name
   ).filter(Boolean);
+  const productDescription = product.description || `${product.type} product with a quality finish.`;
   card.innerHTML = `
     <div class="card-image">
       ${productImages[0] ? `<img class="card-image-primary" src="${resolveProductImage(productImages[0])}" alt="${productName}" />` : ''}
@@ -494,7 +498,7 @@ const createProductCard = (product) => {
     <div class="card-info">
       <h3 class="product-name">${productName}</h3>
       ${variations.length ? `<div class="product-badges">${variations.map((variation) => `<span>${variation}</span>`).join('')}</div>` : ''}
-      <p class="product-type">${product.description || `${product.type} product with a quality finish.`}</p>
+      <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description">${productDescription}</span></p>
       <p class="product-price">Rs. ${Number(product.price).toLocaleString()}/-</p>
     </div>
     <div class="card-action">
@@ -812,6 +816,7 @@ const toggleCartPanel = (open) => {
   if (!panel || !backdrop) return;
   panel.classList.toggle('open', open);
   backdrop.classList.toggle('open', open);
+  document.body.classList.toggle('cart-is-open', open);
 };
 
 const ensureCartPanel = () => {
@@ -832,6 +837,10 @@ const ensureCartPanel = () => {
         <div class="summary-row summary-total-row"><span>Total</span><span class="summary-total" id="cartTotal">PKR 0</span></div>
         <button type="button" class="checkout-btn">Checkout</button>
       </div>
+      <section class="cart-related-products" aria-labelledby="cartRelatedTitle">
+        <h3 id="cartRelatedTitle">You may also like</h3>
+        <div class="cart-related-row" id="cartRelatedItems"></div>
+      </section>
     </aside>
   `);
 };
@@ -901,6 +910,7 @@ const changeCartQuantity = (productId, delta) => {
 const renderCartPanel = () => {
   const cartList = document.getElementById('cartItems');
   const total = document.getElementById('cartTotal');
+  const relatedList = document.getElementById('cartRelatedItems');
   if (!cartList || !total) return;
   cartList.innerHTML = '';
 
@@ -918,13 +928,13 @@ const renderCartPanel = () => {
       <div class="cart-item-info">
         <p class="cart-item-title">${item.name}</p>
         <p class="cart-item-meta">${item.type}${item.selectedVariation ? ` · ${item.selectedVariation}` : ''}</p>
+      </div>
+      <div class="cart-item-side">
         <div class="cart-item-controls">
           <button type="button" data-action="decrease" data-id="${item.id}">-</button>
           <span>${item.quantity}</span>
           <button type="button" data-action="increase" data-id="${item.id}">+</button>
         </div>
-      </div>
-      <div class="cart-item-side">
         <p class="cart-item-price">PKR ${(item.price * item.quantity).toLocaleString()}</p>
         <button type="button" class="remove-item-btn" data-action="remove" data-id="${item.id}">×</button>
       </div>
@@ -933,6 +943,16 @@ const renderCartPanel = () => {
   });
 
   total.textContent = `PKR ${getCartTotal().toLocaleString()}`;
+
+  if (relatedList) {
+    relatedList.innerHTML = '';
+    const cartCategories = new Set(cartState.items.map((item) => String(item.category || item.type || '').toLowerCase()));
+    const cartIds = new Set(cartState.items.map((item) => String(item.id)));
+    products
+      .filter((product) => cartCategories.has(String(product.category || product.type || '').toLowerCase()) && !cartIds.has(String(product.id)))
+      .slice(0, 4)
+      .forEach((product) => relatedList.appendChild(createProductCard(product)));
+  }
 };
 
 const bindCartEvents = () => {
@@ -1038,11 +1058,13 @@ const renderCheckoutPage = () => {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (form.dataset.orderSubmitting === 'true') return;
     if (!form.reportValidity()) return;
     const formData = new FormData(form);
     const phone = String(formData.get('phone') || '').trim();
     const email = String(formData.get('email') || '').trim();
     if (!/^\d{11}$/.test(phone) || !/^[^\s@]+@gmail\.com$/i.test(email)) return;
+    form.dataset.orderSubmitting = 'true';
     const submitButton = document.querySelector('.checkout-submit');
     if (submitButton) submitButton.disabled = true;
     const order = {
@@ -1083,15 +1105,17 @@ const renderCheckoutPage = () => {
       const confirmation = document.getElementById('checkoutConfirmation');
       if (confirmation) {
         confirmation.hidden = false;
+        document.getElementById('checkoutContent')?.classList.add('order-complete');
         const orderIdElement = document.getElementById('checkoutOrderId');
         if (orderIdElement) orderIdElement.textContent = savedOrder.id;
+        const phoneElement = document.getElementById('checkoutCustomerPhone');
+        const emailElement = document.getElementById('checkoutCustomerEmail');
+        if (phoneElement) phoneElement.textContent = customer.phone;
+        if (emailElement) emailElement.textContent = customer.email;
         confirmation.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        window.setTimeout(() => {
-          window.alert(`Order ${savedOrder.id} placed successfully.`);
-          window.location.href = '../index.html';
-        }, 300);
       }
     } catch (error) {
+      delete form.dataset.orderSubmitting;
       if (submitButton) submitButton.disabled = false;
       window.alert(error.message || 'The order could not be submitted. Please try again.');
     }
@@ -1136,6 +1160,11 @@ const saveScrollPosition = () => {
 };
 
 const restoreScrollPosition = () => {
+  const navigationEntry = performance.getEntriesByType('navigation')[0];
+  const isReload = navigationEntry?.type === 'reload'
+    || (!navigationEntry && performance.navigation?.type === 1);
+  if (!isReload) return;
+
   const savedPosition = Number(sessionStorage.getItem(scrollStateKey));
   if (!Number.isFinite(savedPosition) || savedPosition <= 0) return;
   requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, savedPosition)));
@@ -1297,12 +1326,13 @@ const renderDetailPage = () => {
   const relatedContainer = document.getElementById('relatedProducts');
   if (relatedContainer) {
     relatedContainer.innerHTML = '';
-    const related = products.filter((item) => item.type === product.type && item.id !== product.id);
-    if (related.length === 0) {
-      products.filter((item) => item.id !== product.id).forEach((item) => relatedContainer.appendChild(createProductCard(item)));
-    } else {
-      related.forEach((item) => relatedContainer.appendChild(createProductCard(item)));
-    }
+    const productCategory = String(product.category || product.type || '').trim().toLowerCase();
+    const related = products.filter((item) => (
+      String(item.category || item.type || '').trim().toLowerCase() === productCategory
+      && item.id !== product.id
+    ));
+    related.forEach((item) => relatedContainer.appendChild(createProductCard(item)));
+    if (!related.length) relatedContainer.closest('.related-products-section')?.remove();
   }
 
   const detailReviews = document.getElementById('detailReviews');
@@ -1357,14 +1387,12 @@ const renderDetailPage = () => {
 const init = async () => {
   loadCart();
   ensureCartPanel();
-  await loadSupabaseContent();
   applyCmsPageMedia();
   renderAnnouncement();
   renderWhatsAppButton();
   renderTrendingProducts();
   await renderVideoShowcase();
   await renderCategoryPage();
-  renderShopReviews();
   repairMojibake();
   bindSearch();
   updateCartUI();
@@ -1375,6 +1403,18 @@ const init = async () => {
   }
   if (window.location.pathname.includes('checkout')) {
     renderCheckoutPage();
+  }
+  restoreScrollPosition();
+  await loadSupabaseContent();
+  if (supabaseContentLoaded) {
+    applyCmsPageMedia();
+    renderTrendingProducts();
+    await renderVideoShowcase();
+    await renderCategoryPage();
+    renderShopReviews();
+    updateCartUI();
+    if (window.location.pathname.includes('product-detail')) renderDetailPage();
+    if (window.location.pathname.includes('checkout')) renderCheckoutPage();
   }
   const remoteLoaded = await loadRemoteContent();
   if (remoteLoaded) {
@@ -1388,7 +1428,6 @@ const init = async () => {
     if (window.location.pathname.includes('product-detail')) renderDetailPage();
     if (window.location.pathname.includes('checkout')) renderCheckoutPage();
   }
-  restoreScrollPosition();
 };
 
 window.addEventListener('storage', (event) => {

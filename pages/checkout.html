@@ -66,13 +66,18 @@
           <button class="checkout-submit checkout-submit-after-payment" form="checkoutForm" type="submit">Place order</button>
         </section>
         <div class="checkout-confirmation" id="checkoutConfirmation" role="status" hidden>
-          <strong>Order completed successfully.</strong>
-          <span>Your order ID:</span>
+          <div class="confirmation-check" aria-hidden="true">&#10003;</div>
+          <span class="confirmation-kicker">ORDER CONFIRMED</span>
+          <strong>Thank you, your order has been received.</strong>
+          <p>We will contact you on your phone number and email address with the next update.</p>
+          <span class="confirmation-order-label">Your order number</span>
           <div class="order-id-row">
             <code id="checkoutOrderId"></code>
             <button type="button" id="copyOrderId" class="copy-order-id">Copy ID</button>
           </div>
+          <p class="confirmation-contact">We will contact you at <strong id="checkoutCustomerPhone"></strong> and <strong id="checkoutCustomerEmail"></strong>.</p>
           <small id="copyOrderStatus" aria-live="polite"></small>
+          <a class="confirmation-home-link" href="../index.html">Continue shopping</a>
         </div>
       </div>
     </main>
