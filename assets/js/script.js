@@ -123,14 +123,16 @@ const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
-    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }] = await Promise.all([
+    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }, { data: remotePages, error: pagesError }] = await Promise.all([
       _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
       _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
       _supabase.from('videos').select('*, products(name)').eq('status', 'published').order('page_slug').order('sort_order'),
-      _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement'])
+      _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
+      _supabase.from('pages').select('name,hero_url,banner_url')
     ]);
     if (productsError) throw productsError;
     if (reviewsError) throw reviewsError;
+    if (pagesError) throw pagesError;
     if (videosError) console.warn('Supabase shop videos unavailable; continuing with product and review content.', videosError);
     if (settingsError) console.warn('Supabase settings unavailable; using fallback shipping configuration.', settingsError);
     if (Array.isArray(remoteSettings)) {
@@ -166,6 +168,9 @@ const loadSupabaseContent = async () => {
         image: review.image_url || review.image || '',
         product: productNames.get(String(review.product_id)) || review.product || ''
       }));
+    }
+    if (Array.isArray(remotePages)) {
+      cmsData = { ...(cmsData || {}), pages: Object.fromEntries(remotePages.map((page) => [page.name, { hero: page.hero_url || '', banner: page.banner_url || '' }])) };
     }
     if (Array.isArray(remoteVideos)) {
       const productById = new Map(products.map((product) => [String(product.id), product]));
@@ -453,13 +458,19 @@ const applyCmsPageMedia = () => {
   };
   const hero = document.querySelector('.hero-section img');
   const banner = document.querySelector('.category-page-banner');
-  if (hero && page.hero) {
-    hero.src = resolvePageMedia(page.hero);
-    hero.onerror = () => { hero.onerror = null; };
+  if (hero) {
+    hero.style.display = page.hero ? '' : 'none';
+    if (page.hero) {
+      hero.src = resolvePageMedia(page.hero);
+      hero.onerror = () => { hero.onerror = null; };
+    }
   }
-  if (banner && page.banner) {
-    banner.src = resolvePageMedia(page.banner);
-    banner.onerror = () => { banner.onerror = null; };
+  if (banner) {
+    banner.style.display = page.banner ? '' : 'none';
+    if (page.banner) {
+      banner.src = resolvePageMedia(page.banner);
+      banner.onerror = () => { banner.onerror = null; };
+    }
   }
 };
 
@@ -538,12 +549,14 @@ const renderTrendingProducts = () => {
 
     const bannerImage = document.createElement('img');
     bannerImage.className = `category-banner${bannerClass ? ` ${bannerClass}` : ''}`;
-    const cmsBanner = getCmsPageMedia(label)?.banner;
-    bannerImage.src = resolveProductImage(cmsBanner || banner);
+    const cmsPage = getCmsPageMedia(label);
+    const cmsBanner = cmsPage ? cmsPage.banner : banner;
+    bannerImage.style.display = cmsBanner ? '' : 'none';
+    bannerImage.src = resolveProductImage(cmsBanner);
     bannerImage.alt = `${label} collection banner`;
     bannerImage.onerror = () => {
       bannerImage.onerror = null;
-      bannerImage.src = resolveProductImage(banner);
+      if (!cmsPage) bannerImage.src = resolveProductImage(banner);
     };
 
     const bannerLink = document.createElement('a');

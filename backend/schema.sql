@@ -71,6 +71,24 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pages_public_read ON pages;
+CREATE POLICY pages_public_read ON pages FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS pages_admin_write ON pages;
+CREATE POLICY pages_admin_write ON pages FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS reviews_public_read ON reviews;
+CREATE POLICY reviews_public_read ON reviews FOR SELECT TO anon, authenticated USING (status = 'published');
+DROP POLICY IF EXISTS reviews_admin_write ON reviews;
+CREATE POLICY reviews_admin_write ON reviews FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS settings_public_read ON settings;
+CREATE POLICY settings_public_read ON settings FOR SELECT TO anon, authenticated USING (key IN ('announcement', 'shipping_cost'));
+DROP POLICY IF EXISTS settings_admin_write ON settings;
+CREATE POLICY settings_admin_write ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number TEXT UNIQUE NOT NULL,
