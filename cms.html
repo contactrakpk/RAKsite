@@ -248,16 +248,12 @@
       };
       console.debug('Saving video to Supabase:',payload);
       const query=isUuid(video.id)
-        ? _supabase.from('videos').update(payload).eq('id',video.id).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status')
-        : _supabase.from('videos').insert(payload).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status');
-      const {data:storedResponse,error}=await query;
+        ? _supabase.from('videos').update(payload).eq('id',video.id)
+        : _supabase.from('videos').insert(payload);
+      const {error}=await query;
       if(error){console.error('Supabase videos write failed:',{error,payload});throw error;}
-      const stored=Array.isArray(storedResponse)?storedResponse[0]:storedResponse;
-      if(!stored?.id)throw new Error('Supabase did not return the saved video row.');
-      video.id=stored.id;
-      video.video=stored.video_url;
-      console.info('Video saved to Supabase:',stored);
-      return stored;
+      console.info('Video saved to Supabase:',payload);
+      return true;
     };
     const uploadVideoToStorage=async(file)=>{
       if(!(file instanceof File)||!file.size)throw new Error('Choose a video file first.');
