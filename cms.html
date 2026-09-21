@@ -248,10 +248,11 @@
       };
       console.debug('Saving video to Supabase:',payload);
       const query=isUuid(video.id)
-        ? _supabase.from('videos').update(payload).eq('id',video.id).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status').single()
-        : _supabase.from('videos').insert(payload).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status').single();
-      const {data:stored,error}=await query;
+        ? _supabase.from('videos').update(payload).eq('id',video.id).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status')
+        : _supabase.from('videos').insert(payload).select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status');
+      const {data:storedResponse,error}=await query;
       if(error){console.error('Supabase videos write failed:',{error,payload});throw error;}
+      const stored=Array.isArray(storedResponse)?storedResponse[0]:storedResponse;
       if(!stored?.id)throw new Error('Supabase did not return the saved video row.');
       video.id=stored.id;
       video.video=stored.video_url;
