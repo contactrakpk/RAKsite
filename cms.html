@@ -250,9 +250,13 @@
       const query=isUuid(video.id)
         ? _supabase.from('videos').update(payload).eq('id',video.id)
         : _supabase.from('videos').insert(payload);
-      const {error}=await query;
-      if(error){console.error('Supabase videos write failed:',{error,payload});throw error;}
-      console.info('Video saved to Supabase:',payload);
+      const {data,error}=await query;
+      if(error){
+        console.error('Supabase error:',JSON.stringify(error));
+        console.error('Supabase videos write failed:',{error,payload});
+        throw error;
+      }
+      console.info('Video saved to Supabase:',{data,payload});
       return true;
     };
     const uploadVideoToStorage=async(file)=>{
