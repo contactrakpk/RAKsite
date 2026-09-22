@@ -12,8 +12,8 @@
   --page-bg: #ffffff;
   --announce-bg: #1b1b1d;
   --announce-text: #f4ead9;
-  --font-heading: 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Segoe UI', 'Arial', sans-serif;
+  --font-body: 'Segoe UI', 'Arial', sans-serif;
   --display-font: var(--font-heading);
   --body-font: var(--font-body);
   --shadow-soft: 0 20px 40px rgba(17, 17, 17, 0.07);
@@ -1369,7 +1369,8 @@ body, p, span, a, li, input, button, .price, .description {
   display: flex;
   flex-direction: column;
   position: relative;
-  width: calc(100% - 5px);
+  width: 100%;
+  max-width: 220px;
   justify-self: center;
   cursor: pointer;
   border-radius: 8px;
@@ -1386,8 +1387,8 @@ body, p, span, a, li, input, button, .price, .description {
 
 .card-image {
   width: 100%;
-  height: 240px !important;
-  min-height: 240px !important;
+  height: 220px !important;
+  min-height: 220px !important;
   padding: 0;
   background: #f7f7f7;
   position: relative;
@@ -1398,11 +1399,11 @@ body, p, span, a, li, input, button, .price, .description {
   width: 100%;
   height: 100%;
   max-width: 100%;
-  max-height: 240px;
+  max-height: 220px;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
-  transform: scale(1.06);
+  transform: scale(1.02);
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
@@ -1433,18 +1434,20 @@ body, p, span, a, li, input, button, .price, .description {
   z-index: 1;
   background: #f7f7f7;
   min-height: 0;
-  padding: 11px 13px 6px;
+  padding: 7px 13px 1px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
+  line-height: 1;
 }
 
 .product-name {
   display: block !important;
-  margin: 0;
-  min-height: 19px;
+  margin: 2px 0 0;
+  text-align: center;
+  min-height: 0;
   font-size: 15px;
-  line-height: 1.2;
+  line-height: 0.7;
   color: #111111 !important;
   font-family: var(--font-heading);
   font-weight: 600;
@@ -1490,14 +1493,19 @@ body, p, span, a, li, input, button, .price, .description {
 
 .product-category {
   display: block;
-  margin-bottom: 2px;
+  margin: 0;
+  text-align: center;
   font-size: 10px;
   font-style: italic;
   color: #777777;
+  line-height: 0.7;
 }
 
 .product-description {
   display: block;
+  font-size: 10px;
+  line-height: 1.25;
+  color: #777777;
 }
 
 .product-price {
@@ -1516,12 +1524,12 @@ body, p, span, a, li, input, button, .price, .description {
 
 .add-cart-card-btn {
   width: 100%;
-  min-height: 34px;
+  min-height: 24px;
   border: 1px solid #c9151b;
   background: #c9151b;
   color: #ffffff;
-  padding: 7px 12px;
-  border-radius: 999px;
+  padding: 4px 12px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -3780,33 +3788,37 @@ video {
   .trending-row .product-price {
     font-size: 13px !important;
     line-height: 1.05;
+    margin: 0;
+    display: block;
   }
 
   .category-page-products .card-action,
   .trending-row .card-action {
-    padding: 0 4px 4px;
+    padding: 0;
   }
 
   .category-page-products .add-cart-card-btn,
   .trending-row .add-cart-card-btn {
-    min-height: 28px;
-    padding: 6px 4px;
-    border-radius: 999px;
+    min-height: 20px;
+    padding: 4px 4px;
+    border-radius: 3px;
     font-size: 8px;
     line-height: 1.1;
+    margin-top: 0;
+    display: block;
   }
 }
 
 @media (max-width: 480px) {
   .category-page-products .card-image,
   .trending-row .card-image {
-    height: 120px !important;
-    min-height: 120px !important;
+    height: 100px !important;
+    min-height: 100px !important;
   }
 
   .category-page-products .card-image img,
   .trending-row .card-image img {
-    max-height: 120px;
+    max-height: 100px;
   }
 
   .category-page-products .card-info,
@@ -3828,13 +3840,23 @@ video {
   .category-page-products .product-price,
   .trending-row .product-price {
     font-size: 12px !important;
+    margin: 0;
+    display: block;
+  }
+
+  .category-page-products .card-action,
+  .trending-row .card-action {
+    padding: 0;
   }
 
   .category-page-products .add-cart-card-btn,
   .trending-row .add-cart-card-btn {
-    min-height: 25px;
-    padding: 5px 2px;
+    min-height: 18px;
+    padding: 3px 2px;
+    border-radius: 3px;
     font-size: 7px;
+    margin-top: 0;
+    display: block;
   }
 }
 
@@ -3922,5 +3944,45 @@ video {
 
   .remove-item-btn {
     font-size: 14px;
+  }
+}
+
+@media (max-width: 620px) {
+  .category-page-products .card-info,
+  .trending-row .card-info {
+    gap: 0;
+  }
+
+  .category-page-products .product-name,
+  .trending-row .product-name {
+    min-height: 0;
+    margin-bottom: 0;
+    font-size: 10px;
+    line-height: 1.05;
+  }
+
+  .category-page-products .product-category,
+  .trending-row .product-category {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 7px;
+    line-height: 1;
+  }
+
+  .category-page-products .product-price,
+  .trending-row .product-price {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-page-products .product-category,
+  .trending-row .product-category {
+    font-size: 6px;
+  }
+
+  .category-page-products .product-price,
+  .trending-row .product-price {
+    font-size: 9px !important;
   }
 }
