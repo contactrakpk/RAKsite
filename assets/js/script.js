@@ -1,3 +1,73 @@
+const pageLoaderMarkup = `
+  <div class="page-loader" id="pageLoader" aria-live="polite" aria-busy="true">
+    <div class="page-loader__panel">
+      <div class="page-loader__spinner" aria-hidden="true"></div>
+      <p class="page-loader__text">Loading...</p>
+    </div>
+  </div>
+`;
+
+if (!document.getElementById('pageLoader')) {
+  document.body.insertAdjacentHTML('beforeend', pageLoaderMarkup);
+}
+
+const showPageLoader = () => {
+  const loader = document.getElementById('pageLoader');
+  if (!loader) return;
+  document.body.classList.add('page-loading');
+  loader.classList.remove('is-hidden');
+};
+
+const hidePageLoader = () => {
+  const loader = document.getElementById('pageLoader');
+  if (!loader) return;
+  loader.classList.add('is-hidden');
+  document.body.classList.remove('page-loading');
+  window.setTimeout(() => loader.remove(), 350);
+};
+
+const waitForInitialStorefrontLoad = async () => {
+  const start = Date.now();
+  const minimumDelay = 500;
+
+  try {
+    await Promise.resolve();
+    const waited = Date.now() - start;
+    if (waited < minimumDelay) {
+      await new Promise((resolve) => window.setTimeout(resolve, minimumDelay - waited));
+    }
+  } finally {
+    hidePageLoader();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  showPageLoader();
+});
+
+document.addEventListener('click', (event) => {
+  const link = event.target.closest('a[href]');
+  if (!link) return;
+
+  const href = link.getAttribute('href');
+  if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) {
+    return;
+  }
+
+  const target = new URL(href, window.location.href);
+  if (target.origin !== window.location.origin) return;
+
+  if (window.location.pathname === target.pathname && window.location.search === target.search) {
+    return;
+  }
+
+  event.preventDefault();
+  showPageLoader();
+  window.setTimeout(() => {
+    window.location.href = target.href;
+  }, 180);
+});
+
 const { createClient } = supabase;
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -1385,6 +1455,7 @@ const renderDetailPage = () => {
 };
 
 const init = async () => {
+  showPageLoader();
   loadCart();
   ensureCartPanel();
   applyCmsPageMedia();
@@ -1428,6 +1499,7 @@ const init = async () => {
     if (window.location.pathname.includes('product-detail')) renderDetailPage();
     if (window.location.pathname.includes('checkout')) renderCheckoutPage();
   }
+  await waitForInitialStorefrontLoad();
 };
 
 window.addEventListener('storage', (event) => {

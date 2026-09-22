@@ -47,6 +47,65 @@ body {
   -ms-overflow-style: none;
 }
 
+body.page-loading {
+  overflow: hidden;
+}
+
+.page-loader {
+  position: fixed;
+  top: 110px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 99999;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.page-loader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.page-loader__panel {
+  width: min(760px, calc(100% - 32px));
+  padding: 28px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.page-loader__spinner {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 5px solid #f1f1f1;
+  border-top-color: #111111;
+  border-right-color: #cfcfcf;
+  animation: page-loader-spin 0.9s linear infinite;
+}
+
+.page-loader__text {
+  margin: 0;
+  color: #4b4b4b;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+@keyframes page-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 h1, h2, h3, h4, h5, h6, .product-title, .section-title {
   font-family: var(--font-heading);
   font-weight: 600;
