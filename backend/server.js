@@ -59,50 +59,78 @@ app.post('/api/auth/login', rateLimit({ windowMs: 10 * 60 * 1000, limit: 10 }), 
   response.json({ token, admin: { id: admin.id, email: admin.email } });
 }));
 
-app.get('/api/content', asyncHandler(async (_request, response) => {
-  const [products, images, variations, variationImages, pages, videos, reviews, settings] = await Promise.all([
-    pool.query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC"),
-    pool.query('SELECT * FROM product_images ORDER BY sort_order'),
-    pool.query('SELECT * FROM product_variations ORDER BY sort_order'),
-    pool.query('SELECT * FROM product_variation_images ORDER BY product_id, variation_name, sort_order'),
-    pool.query('SELECT * FROM pages ORDER BY name'),
-    pool.query("SELECT * FROM videos WHERE status = 'published' ORDER BY page_slug, sort_order"),
-    pool.query("SELECT * FROM reviews WHERE status = 'published' ORDER BY review_date DESC"),
-    pool.query('SELECT key, value FROM settings')
-  ]);
-  const imageMap = images.rows.reduce((map, image) => ((map[image.product_id] ||= []).push(image.image_url), map), {});
-  const variationMap = variations.rows.reduce((map, variation) => ((map[variation.product_id] ||= []).push({ name: variation.name, price: Number(variation.price) }), map), {});
-  const variationImageMap = variationImages.rows.reduce((map, image) => {
-    const productKey = image.product_id;
-    const variationKey = image.variation_name;
-    if (!map[productKey]) map[productKey] = {};
-    if (!map[productKey][variationKey]) map[productKey][variationKey] = [];
-    map[productKey][variationKey].push(image.image_url);
-    return map;
-  }, {});
-  const productMap = products.rows.map((product) => ({
-    id: product.id,
-    name: product.name,
-    category: product.category,
-    type: product.category,
-    description: product.short_description,
-    fullDescription: product.description,
-    variations: (variationMap[product.id] || []).map((variation) => ({
-      ...variation,
-      images: variationImageMap[product.id]?.[variation.name] || []
-    })),
-    price: variationMap[product.id]?.[0]?.price || 0,
-    images: imageMap[product.id] || []
-  }));
-  const productNames = Object.fromEntries(productMap.map((product) => [product.id, product.name]));
-  response.json({
-    products: productMap,
-    pages: Object.fromEntries(pages.rows.map((page) => [page.name || page.slug, { hero: page.hero_url || '', banner: page.banner_url || '' }])),
-    videos: videos.rows.map((video) => ({ ...video, video: video.video_url, product: productNames[video.product_id] || '' })),
-    reviews: reviews.rows.map((review) => ({ ...review, text: review.body, image: review.image_url || '', product: productNames[review.product_id] || '' })),
-    settings: Object.fromEntries(settings.rows.map((item) => [item.key, item.value]))
-  });
-}));
+app.get('/api/content', async (request, response) => {
+  const fallbackPayload = {
+    products: [],
+    pages: {},
+    videos: [],
+    reviews: [],
+    settings: {}
+  };
+
+  try {
+    const results = await Promise.allSettled([
+      pool.query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC"),
+      pool.query('SELECT * FROM product_images ORDER BY sort_order'),
+      pool.query('SELECT * FROM product_variations ORDER BY sort_order'),
+      pool.query('SELECT * FROM product_variation_images ORDER BY product_id, variation_name, sort_order'),
+      pool.query('SELECT * FROM pages ORDER BY name'),
+      pool.query("SELECT * FROM videos WHERE status = 'published' ORDER BY page_slug, sort_order"),
+      pool.query("SELECT * FROM reviews WHERE status = 'published' ORDER BY review_date DESC"),
+      pool.query('SELECT key, value FROM settings')
+    ]);
+
+    const [productsResult, imagesResult, variationsResult, variationImagesResult, pagesResult, videosResult, reviewsResult, settingsResult] = results.map((result) => result.status === 'fulfilled' ? result.value : { rows: [] });
+
+    const products = productsResult?.rows || [];
+    const images = imagesResult?.rows || [];
+    const variations = variationsResult?.rows || [];
+    const variationImages = variationImagesResult?.rows || [];
+    const pages = pagesResult?.rows || [];
+    const videos = videosResult?.rows || [];
+    const reviews = reviewsResult?.rows || [];
+    const settings = settingsResult?.rows || [];
+
+    const imageMap = images.reduce((map, image) => ((map[image.product_id] ||= []).push(image.image_url), map), {});
+    const variationMap = variations.reduce((map, variation) => ((map[variation.product_id] ||= []).push({ name: variation.name, price: Number(variation.price) }), map), {});
+    const variationImageMap = variationImages.reduce((map, image) => {
+      const productKey = image.product_id;
+      const variationKey = image.variation_name;
+      if (!map[productKey]) map[productKey] = {};
+      if (!map[productKey][variationKey]) map[productKey][variationKey] = [];
+      map[productKey][variationKey].push(image.image_url);
+      return map;
+    }, {});
+
+    const productMap = products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      type: product.category,
+      description: product.short_description,
+      fullDescription: product.description,
+      variations: (variationMap[product.id] || []).map((variation) => ({
+        ...variation,
+        images: variationImageMap[product.id]?.[variation.name] || []
+      })),
+      price: variationMap[product.id]?.[0]?.price || 0,
+      images: imageMap[product.id] || []
+    }));
+
+    const productNames = Object.fromEntries(productMap.map((product) => [product.id, product.name]));
+
+    return response.status(200).json({
+      products: productMap,
+      pages: Object.fromEntries((pages || []).map((page) => [page.name || page.slug, { hero: page.hero_url || '', banner: page.banner_url || '' }])),
+      videos: (videos || []).map((video) => ({ ...video, video: video.video_url, product: productNames[video.product_id] || '' })),
+      reviews: (reviews || []).map((review) => ({ ...review, text: review.body, image: review.image_url || '', product: productNames[review.product_id] || '' })),
+      settings: Object.fromEntries((settings || []).map((item) => [item.key, item.value]))
+    });
+  } catch (error) {
+    console.error('Failed to load storefront content:', error);
+    return response.status(200).json(fallbackPayload);
+  }
+});
 
 app.post('/api/orders', asyncHandler(async (request, response) => {
   const { id, customer, items, shipping, total } = request.body || {};

@@ -215,6 +215,7 @@ const cartState = {
 };
 
 const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
+const normalizeProducts = (value) => Array.isArray(value) ? value : [];
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
@@ -229,11 +230,11 @@ const loadSupabaseContent = async () => {
     if (productResult.error) throw productResult.error;
     if (reviewResult.error) throw reviewResult.error;
     if (pageResult.error) throw pageResult.error;
-    const remoteProducts = Array.isArray(productResult.data) ? productResult.data : [];
-    const remoteReviews = Array.isArray(reviewResult.data) ? reviewResult.data : [];
-    const remoteVideos = Array.isArray(videoResult.data) ? videoResult.data : [];
-    const remoteSettings = Array.isArray(settingsResult.data) ? settingsResult.data : [];
-    const remotePages = Array.isArray(pageResult.data) ? pageResult.data : [];
+    const remoteProducts = normalizeProducts(productResult.data);
+    const remoteReviews = normalizeProducts(reviewResult.data);
+    const remoteVideos = normalizeProducts(videoResult.data);
+    const remoteSettings = normalizeProducts(settingsResult.data);
+    const remotePages = normalizeProducts(pageResult.data);
 
     if (Array.isArray(remoteSettings)) {
       const settings = Object.fromEntries(remoteSettings.map((setting) => [setting.key, setting.value]));
@@ -244,7 +245,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteProducts.length) {
-      products = remoteProducts.map((product) => {
+      products = normalizeProducts(remoteProducts.map((product) => {
         const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
         const variationImages = (product.product_variation_images || []).reduce((map, image) => {
           const key = String(image.variation_name || 'Default');
@@ -268,7 +269,7 @@ const loadSupabaseContent = async () => {
           })),
           price: Number(variations[0]?.price) || 0
         };
-      });
+      }));
     }
 
     if (remoteReviews.length) {
@@ -309,10 +310,10 @@ const loadSupabaseContent = async () => {
     }
 
     supabaseContentLoaded = true;
-    return Array.isArray(products) ? products : [];
+    return normalizeProducts(products);
   } catch (error) {
     console.warn('Supabase storefront content unavailable; using cached/API content.', error);
-    return Array.isArray(products) ? products : [];
+    return normalizeProducts(products);
   }
 };
 
@@ -323,11 +324,11 @@ const loadRemoteContent = async () => {
     if (!response.ok) return false;
     const remote = await response.json();
     if (!supabaseContentLoaded && Array.isArray(remote.products)) {
-      products = remote.products.map((product) => ({
+      products = normalizeProducts(remote.products.map((product) => ({
         ...product,
         type: product.type || product.category,
         variations: (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) => typeof variation === 'string' ? { name: variation, price: product.price } : variation)
-      }));
+      })));
     }
     if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body, image: review.image || review.image_url || '', product: review.product || review.product_name || '' }));
     if (Array.isArray(remote.videos)) {
@@ -348,10 +349,10 @@ const loadRemoteContent = async () => {
       cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: supabaseContentLoaded ? cmsData?.shipping : Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
     }
     cartState.shipping = Number(cmsData?.shipping) >= 0 ? Number(cmsData.shipping) : cartState.shipping;
-    return Array.isArray(products) ? products : [];
+    return normalizeProducts(products);
   } catch (error) {
     console.warn('Remote content unavailable; using local content.', error);
-    return Array.isArray(products) ? products : [];
+    return normalizeProducts(products);
   }
 };
 
