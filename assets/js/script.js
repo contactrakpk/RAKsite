@@ -174,6 +174,29 @@ if (cmsData?.products?.length) {
   products = [...products.filter((product) => !cmsIds.has(product.id)), ...cmsProducts];
 }
 
+const runSupabaseOrderedQuery = async (table, select, filters = []) => {
+  const query = _supabase.from(table).select(select);
+  filters.forEach(({ field, op, value }) => {
+    if (field && op && value !== undefined) query[op](field, value);
+  });
+
+  const attemptOrder = async (column) => {
+    try {
+      return await query.order(column, { ascending: false });
+    } catch (error) {
+      return { data: [], error };
+    }
+  };
+
+  const createdAtResult = await attemptOrder('created_at');
+  if (!createdAtResult.error) return createdAtResult;
+
+  const fallbackResult = await attemptOrder('id');
+  if (!fallbackResult.error) return fallbackResult;
+
+  return createdAtResult;
+};
+
 const videoMedia = {
   cosmetics: { video: '', poster: heroImageByCategory.cosmetics },
   jewelery: { video: '', poster: heroImageByCategory.jewelery },
@@ -195,26 +218,32 @@ const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
-    const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }, { data: remotePages, error: pagesError }] = await Promise.all([
-      _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
-      _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
-      _supabase.from('videos').select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status').eq('status', 'published').order('page_slug').order('sort_order'),
+    const [productResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.all([
+      runSupabaseOrderedQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseOrderedQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseOrderedQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
       _supabase.from('pages').select('name,hero_url,banner_url')
     ]);
-    if (productsError) throw productsError;
-    if (reviewsError) throw reviewsError;
-    if (pagesError) throw pagesError;
-    if (videosError) throw videosError;
-    if (settingsError) console.warn('Supabase settings unavailable; using fallback shipping configuration.', settingsError);
+
+    if (productResult.error) throw productResult.error;
+    if (reviewResult.error) throw reviewResult.error;
+    if (pageResult.error) throw pageResult.error;
+    const remoteProducts = Array.isArray(productResult.data) ? productResult.data : [];
+    const remoteReviews = Array.isArray(reviewResult.data) ? reviewResult.data : [];
+    const remoteVideos = Array.isArray(videoResult.data) ? videoResult.data : [];
+    const remoteSettings = Array.isArray(settingsResult.data) ? settingsResult.data : [];
+    const remotePages = Array.isArray(pageResult.data) ? pageResult.data : [];
+
     if (Array.isArray(remoteSettings)) {
-      const settings=Object.fromEntries(remoteSettings.map((setting)=>[setting.key,setting.value]));
+      const settings = Object.fromEntries(remoteSettings.map((setting) => [setting.key, setting.value]));
       if (settings.shipping_cost !== undefined) {
-        cmsData={...(cmsData||{}),shipping:Number(settings.shipping_cost)||0};
-        cartState.shipping=Number(settings.shipping_cost)||0;
+        cmsData = { ...(cmsData || {}), shipping: Number(settings.shipping_cost) || 0 };
+        cartState.shipping = Number(settings.shipping_cost) || 0;
       }
     }
-    if (Array.isArray(remoteProducts)) {
+
+    if (remoteProducts.length) {
       products = remoteProducts.map((product) => {
         const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
         const variationImages = (product.product_variation_images || []).reduce((map, image) => {
@@ -241,7 +270,8 @@ const loadSupabaseContent = async () => {
         };
       });
     }
-    if (Array.isArray(remoteReviews)) {
+
+    if (remoteReviews.length) {
       const productNames = new Map(products.map((product) => [String(product.id), product.name]));
       cmsReviews = remoteReviews.map((review) => ({
         ...review,
@@ -251,10 +281,12 @@ const loadSupabaseContent = async () => {
         product: productNames.get(String(review.product_id)) || review.product || ''
       }));
     }
-    if (Array.isArray(remotePages)) {
+
+    if (remotePages.length) {
       cmsData = { ...(cmsData || {}), pages: Object.fromEntries(remotePages.map((page) => [page.name, { hero: page.hero_url || '', banner: page.banner_url || '' }])) };
     }
-    if (Array.isArray(remoteVideos)) {
+
+    if (remoteVideos.length) {
       const productById = new Map(products.map((product) => [String(product.id), product]));
       const normalizedVideos = remoteVideos
         .filter((video) => video.video_url)
@@ -275,11 +307,12 @@ const loadSupabaseContent = async () => {
         .map((video) => ({ ...video.linkedProduct, video: video.video, poster: video.poster, videoTitle: video.title }));
       categoryCmsVideos = normalizedVideos.filter((video) => String(video.page_slug).toLowerCase() !== 'shop');
     }
+
     supabaseContentLoaded = true;
-    return true;
+    return Array.isArray(products) ? products : [];
   } catch (error) {
     console.warn('Supabase storefront content unavailable; using cached/API content.', error);
-    return false;
+    return Array.isArray(products) ? products : [];
   }
 };
 
@@ -315,10 +348,10 @@ const loadRemoteContent = async () => {
       cmsData = { ...(cmsData || {}), pages: remote.pages || cmsData?.pages, announcement: remote.settings?.announcement || cmsData?.announcement, shipping: supabaseContentLoaded ? cmsData?.shipping : Number(remote.settings?.shipping_cost ?? cmsData?.shipping ?? 180) };
     }
     cartState.shipping = Number(cmsData?.shipping) >= 0 ? Number(cmsData.shipping) : cartState.shipping;
-    return true;
+    return Array.isArray(products) ? products : [];
   } catch (error) {
     console.warn('Remote content unavailable; using local content.', error);
-    return false;
+    return Array.isArray(products) ? products : [];
   }
 };
 
