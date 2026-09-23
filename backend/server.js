@@ -60,10 +60,11 @@ app.post('/api/auth/login', rateLimit({ windowMs: 10 * 60 * 1000, limit: 10 }), 
 }));
 
 app.get('/api/content', asyncHandler(async (_request, response) => {
-  const [products, images, variations, pages, videos, reviews, settings] = await Promise.all([
+  const [products, images, variations, variationImages, pages, videos, reviews, settings] = await Promise.all([
     pool.query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC"),
     pool.query('SELECT * FROM product_images ORDER BY sort_order'),
     pool.query('SELECT * FROM product_variations ORDER BY sort_order'),
+    pool.query('SELECT * FROM product_variation_images ORDER BY product_id, variation_name, sort_order'),
     pool.query('SELECT * FROM pages ORDER BY name'),
     pool.query("SELECT * FROM videos WHERE status = 'published' ORDER BY page_slug, sort_order"),
     pool.query("SELECT * FROM reviews WHERE status = 'published' ORDER BY review_date DESC"),
@@ -71,6 +72,14 @@ app.get('/api/content', asyncHandler(async (_request, response) => {
   ]);
   const imageMap = images.rows.reduce((map, image) => ((map[image.product_id] ||= []).push(image.image_url), map), {});
   const variationMap = variations.rows.reduce((map, variation) => ((map[variation.product_id] ||= []).push({ name: variation.name, price: Number(variation.price) }), map), {});
+  const variationImageMap = variationImages.rows.reduce((map, image) => {
+    const productKey = image.product_id;
+    const variationKey = image.variation_name;
+    if (!map[productKey]) map[productKey] = {};
+    if (!map[productKey][variationKey]) map[productKey][variationKey] = [];
+    map[productKey][variationKey].push(image.image_url);
+    return map;
+  }, {});
   const productMap = products.rows.map((product) => ({
     id: product.id,
     name: product.name,
@@ -78,7 +87,10 @@ app.get('/api/content', asyncHandler(async (_request, response) => {
     type: product.category,
     description: product.short_description,
     fullDescription: product.description,
-    variations: variationMap[product.id] || [],
+    variations: (variationMap[product.id] || []).map((variation) => ({
+      ...variation,
+      images: variationImageMap[product.id]?.[variation.name] || []
+    })),
     price: variationMap[product.id]?.[0]?.price || 0,
     images: imageMap[product.id] || []
   }));

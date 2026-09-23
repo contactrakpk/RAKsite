@@ -196,7 +196,7 @@ let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
     const [{ data: remoteProducts, error: productsError }, { data: remoteReviews, error: reviewsError }, { data: remoteVideos, error: videosError }, { data: remoteSettings, error: settingsError }, { data: remotePages, error: pagesError }] = await Promise.all([
-      _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
+      _supabase.from('products').select('*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)').eq('status', 'published').order('created_at', { ascending: false }),
       _supabase.from('reviews').select('*').eq('status', 'published').order('review_date', { ascending: false }),
       _supabase.from('videos').select('id,page_slug,title,video_url,poster_url,product_id,sort_order,status').eq('status', 'published').order('page_slug').order('sort_order'),
       _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
@@ -217,6 +217,12 @@ const loadSupabaseContent = async () => {
     if (Array.isArray(remoteProducts)) {
       products = remoteProducts.map((product) => {
         const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
+        const variationImages = (product.product_variation_images || []).reduce((map, image) => {
+          const key = String(image.variation_name || 'Default');
+          if (!map[key]) map[key] = [];
+          map[key].push(image.image_url);
+          return map;
+        }, {});
         const images = (product.product_images || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
         return {
           id: product.id,
@@ -226,7 +232,11 @@ const loadSupabaseContent = async () => {
           description: product.short_description || '',
           fullDescription: product.description || '',
           images: images.map((image) => image.image_url).filter(Boolean),
-          variations: variations.map((variation) => ({ name: variation.name, price: Number(variation.price) || 0 })),
+          variations: variations.map((variation) => ({
+            name: variation.name,
+            price: Number(variation.price) || 0,
+            images: (variationImages[variation.name] || []).filter(Boolean)
+          })),
           price: Number(variations[0]?.price) || 0
         };
       });
@@ -564,15 +574,15 @@ const createProductCard = (product) => {
     <div class="card-image">
       ${productImages[0] ? `<img class="card-image-primary" src="${resolveProductImage(productImages[0])}" alt="${productName}" />` : ''}
       ${productImages[1] ? `<img class="card-image-secondary" src="${resolveProductImage(productImages[1])}" alt="" aria-hidden="true" />` : ''}
+      <div class="card-action">
+        <button type="button" class="add-cart-card-btn" data-product-id="${product.id}" aria-label="Add to cart"></button>
+      </div>
     </div>
     <div class="card-info">
       <h3 class="product-name">${productName}</h3>
       ${variations.length ? `<div class="product-badges">${variations.map((variation) => `<span>${variation}</span>`).join('')}</div>` : ''}
       <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description">${productDescription}</span></p>
       <p class="product-price">Rs. ${Number(product.price).toLocaleString()}/-</p>
-    </div>
-    <div class="card-action">
-      <button type="button" class="add-cart-card-btn" data-product-id="${product.id}">Add to cart</button>
     </div>
   `;
   card.querySelectorAll('.card-image img').forEach((cardImage) => {
@@ -1235,13 +1245,14 @@ const restoreScrollPosition = () => {
     || (!navigationEntry && performance.navigation?.type === 1);
   if (!isReload) return;
 
-  const savedPosition = Number(sessionStorage.getItem(scrollStateKey));
-  if (!Number.isFinite(savedPosition) || savedPosition <= 0) return;
-  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, savedPosition)));
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  });
 };
 
 window.addEventListener('pagehide', saveScrollPosition);
 window.addEventListener('beforeunload', saveScrollPosition);
+window.addEventListener('load', restoreScrollPosition);
 
 const renderShopReviews = () => {
   const section = document.querySelector('main > .reviews-section:not(.detail-reviews-section)');
@@ -1313,15 +1324,18 @@ const renderDetailPage = () => {
   };
   nameEl.textContent = product.name;
   typeEl.textContent = product.type;
-  const variations = (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) =>
-    typeof variation === 'string' ? { name: variation, price: product.price } : variation
+  const variations = (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price, images: product.images || [] }]).map((variation) =>
+    typeof variation === 'string' ? { name: variation, price: product.price, images: product.images || [] } : variation
   );
+  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || []);
   let selectedVariation = variations[0];
-  priceEl.textContent = `PKR ${selectedVariation.price.toLocaleString()}`;
+  galleryImages = getVariationGallery(selectedVariation);
+  priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
   const fullDescription = product.fullDescription || '';
   const shortDescription = product.description || '';
-  descEl.textContent = fullDescription;
-  if (shortDescEl) shortDescEl.textContent = shortDescription;
+  const renderFormattedText = (value = '') => String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '<br>');
+  descEl.innerHTML = renderFormattedText(fullDescription);
+  if (shortDescEl) shortDescEl.innerHTML = renderFormattedText(shortDescription);
   categoryEl.textContent = product.category;
   qtyEl.textContent = '1';
 
@@ -1334,11 +1348,17 @@ const renderDetailPage = () => {
     const button = event.target.closest('[data-variation-index]');
     if (!button) return;
     selectedVariation = variations[Number(button.dataset.variationIndex)];
+    galleryImages = getVariationGallery(selectedVariation);
     variationsEl.querySelectorAll('.variation-pill').forEach((pill) => pill.classList.toggle('active', pill === button));
     priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
+    const primary = galleryImages[0] || product.images?.[0] || fallbackImage;
+    mainImage.src = primary;
+    mainImage.alt = `${product.name} - ${selectedVariation.name}`;
+    renderThumbnails();
   });
   const renderThumbnails = () => {
-    thumbs.innerHTML = galleryImages.slice(1).map((src, index) => `
+    const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
+    thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
     <button type="button" class="detail-thumb" data-image-index="${index + 1}">
       <img src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${fallbackImage}'" />
     </button>

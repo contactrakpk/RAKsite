@@ -197,6 +197,13 @@
       const variationDelete=await _supabase.from('product_variations').delete().eq('product_id',product.id); if(variationDelete.error)throw variationDelete.error;
       const variations=(product.variations||[]).map((variation,sort_order)=>({product_id:product.id,name:String(typeof variation==='string'?variation:variation.name||'Default'),price:Number(typeof variation==='string'?product.price:variation.price)||0,sort_order}));
       if(variations.length){const {error}=await _supabase.from('product_variations').insert(variations);if(error)throw error;}
+      const variationImageDelete=await _supabase.from('product_variation_images').delete().eq('product_id',product.id); if(variationImageDelete.error)throw variationImageDelete.error;
+      const variationImages=(product.variations||[]).flatMap((variation)=>{
+        const variationName=String(typeof variation==='string'?variation:variation.name||'Default');
+        const imageList=Array.isArray(typeof variation==='string'?[]:variation.images)?(typeof variation==='string'?[]:variation.images):[];
+        return imageList.filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,variation_name:variationName,image_url,sort_order}));
+      });
+      if(variationImages.length){const {error}=await _supabase.from('product_variation_images').insert(variationImages);if(error)throw error;}
     };
     const persistReview=async review=>{
       let productId=null;
@@ -328,8 +335,87 @@
     const putMediaFile=(file)=>new Promise((resolve,reject)=>{const request=indexedDB.open('rak-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('files');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const key='video-'+Date.now()+'-'+Math.random().toString(36).slice(2);const transaction=request.result.transaction('files','readwrite');transaction.objectStore('files').put(file,key);transaction.oncomplete=()=>resolve('idb://'+key);transaction.onerror=()=>reject(transaction.error)}});
     const resolveMediaFile=(reference)=>new Promise((resolve)=>{if(!reference?.startsWith('idb://'))return resolve(reference||'');const request=indexedDB.open('rak-media',1);request.onerror=()=>resolve('');request.onsuccess=()=>{const transaction=request.result.transaction('files','readonly');const getRequest=transaction.objectStore('files').get(reference.slice(6));getRequest.onsuccess=()=>resolve(getRequest.result?URL.createObjectURL(getRequest.result):'');getRequest.onerror=()=>resolve('')}});
     const fileToDataUrl=(file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const maxSize=1400;const scale=Math.min(1,maxSize/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.82))};image.onerror=reject;image.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)});
-    const fileFields=`<div class="field full"><label>Product images <span>*</span> (4 required)</label><input name="images" type="file" accept="image/*" multiple ${''}><small style="color:var(--muted)">Select exactly four images, or use image paths below.</small></div><div class="field full"><label>Image paths</label><input name="imagePaths" placeholder="image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg"></div>`;
-    function openProduct(index=null){const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:''}],price:'',images:[]}:data.products[index];const variations=(p.variations?.length?p.variations:[{name:p.variation||'Default',price:p.price}]).map(v=>typeof v==='string'?{name:v,price:p.price}:v);openModal(index===null?'Add product':'Edit product',`<div class="form-grid"><div class="field"><label>Product name <span>*</span></label><input name="name" required value="${esc(p.name)}"></div><div class="field"><label>Category / page <span>*</span></label><select name="category" required>${categories.slice(1).map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></div><div class="field full"><label>One-line description <span>*</span></label><input name="description" required value="${esc(p.description)}"></div><div class="field full"><label>Product variations <span>*</span></label><div id="variationRows">${variations.map(v=>`<div class="variation-editor-row" style="display:grid;grid-template-columns:1fr 150px auto;gap:8px;margin-bottom:8px"><input name="variationNames" required value="${esc(v.name)}" placeholder="e.g. Black"><input name="variationPrices" type="number" min="0" required value="${esc(v.price)}" placeholder="Price"><button type="button" class="btn danger remove-variation" title="Remove variation">×</button></div>`).join('')}</div><button type="button" class="btn" id="addVariation">+ Add another variation</button></div>${fileFields}<div class="field full"><label>Full product description <span>*</span></label><textarea name="fullDescription" required>${esc(p.fullDescription||p.description)}</textarea></div></div><div class="form-actions"><button class="btn primary">Save product</button></div>`,async form=>{const files=form.getAll('images').filter(file=>file instanceof File&&file.size>0);const paths=String(form.get('imagePaths')||'').split(',').map(x=>x.trim()).filter(Boolean);const images=files.length===4?await Promise.all(files.map(fileToDataUrl)):paths.length===4?paths:(p.images||[]);const names=form.getAll('variationNames').map(x=>x.trim()).filter(Boolean);const prices=form.getAll('variationPrices').map(Number);if(images.length!==4){alert('Please upload exactly 4 images or enter exactly 4 image paths.');return false}if(!names.length||!prices.every(price=>Number.isFinite(price)&&price>=0)||names.length!==prices.length){alert('Please add at least one complete variation.');return false}const variations=names.map((name,i)=>({name,price:prices[i]}));const record={id:p.id||'rak-'+Date.now(),name:form.get('name'),category:form.get('category'),description:form.get('description'),fullDescription:form.get('fullDescription'),variations,price:variations[0].price,images};if(index===null)data.products.push(record);else data.products[index]=record;return true});const rows=$('#variationRows');$('#addVariation').onclick=()=>{const row=document.createElement('div');row.className='variation-editor-row';row.style.cssText='display:grid;grid-template-columns:1fr 150px auto;gap:8px;margin-bottom:8px';row.innerHTML='<input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><button type="button" class="btn danger remove-variation">×</button>';rows.appendChild(row);bindVariationRemove()};const bindVariationRemove=()=>$$('#variationRows .remove-variation').forEach(button=>button.onclick=()=>{if($$('#variationRows .variation-editor-row').length>1)button.parentElement.remove()});bindVariationRemove()}
+    const fileFields='<div class=\"field full\"><label>Product images <span>*</span> (4 required)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Select exactly four images, or use image paths below.</small></div><div class=\"field full\"><label>Image paths</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
+    const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.parentElement.remove();}};});};
+    function openProduct(index=null){
+      const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:'',images:[]}],price:'',images:[]}:data.products[index];
+      const variations=(p.variations&&p.variations.length?p.variations:[{name:p.variation||'Default',price:p.price,images:[]}]).map((v)=>typeof v==='string'?{name:v,price:p.price,images:[]}:v);
+      const categoryOptions=categories.slice(1).map((c)=>'<option '+(c===p.category?'selected':'')+'>'+c+'</option>').join('');
+      const variationRows=variations.map((v,variationIndex)=>{
+        const preview=(v.images||[]).map((src)=>'<img src="'+esc(src)+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block">').join('');
+        return '<div class="variation-editor-row" style="display:grid;grid-template-columns:1fr 150px 1fr auto;gap:8px;margin-bottom:12px">'
+          + '<input name="variationNames" required value="'+esc(v.name)+'" placeholder="e.g. Black">'
+          + '<input name="variationPrices" type="number" min="0" required value="'+esc(v.price)+'" placeholder="Price">'
+          + '<div class="variation-image-stack" style="display:flex;flex-direction:column;gap:6px;min-width:0">'
+          + '<input type="file" class="variation-image-upload" accept="image/*" multiple data-index="'+variationIndex+'" style="width:100%">'
+          + '<input type="text" name="variationImagePaths" value="'+esc((v.images||[]).join(', '))+'" placeholder="variation image paths or urls" style="width:100%">'
+          + '<div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px">'+preview+'</div>'
+          + '</div>'
+          + '<button type="button" class="btn danger remove-variation" title="Remove variation">×</button>'
+          + '</div>';
+      }).join('');
+
+      openModal(index===null?'Add product':'Edit product',
+        '<div class="form-grid">'
+        + '<div class="field"><label>Product name <span>*</span></label><input name="name" required value="'+esc(p.name)+'"></div>'
+        + '<div class="field"><label>Category / page <span>*</span></label><select name="category" required>'+categoryOptions+'</select></div>'
+        + '<div class="field full"><label>One-line description <span>*</span></label><input name="description" required value="'+esc(p.description)+'"></div>'
+        + '<div class="field full"><label>Product variations <span>*</span></label><div id="variationRows">'+variationRows+'</div><button type="button" class="btn" id="addVariation">+ Add another variation</button></div>'
+        + fileFields
+        + '<div class="field full"><label>Full product description <span>*</span></label><textarea name="fullDescription" required>'+esc(p.fullDescription||p.description)+'</textarea></div>'
+        + '</div>'
+        + '<div class="form-actions"><button class="btn primary">Save product</button></div>',
+        async (form)=>{
+          const files=(form.getAll('images')||[]).filter((file)=>file instanceof File && file.size>0);
+          const imagePaths=String(form.get('imagePaths')||'').split(',').map((x)=>x.trim()).filter(Boolean);
+          const imageData=files.length===4?await Promise.all(files.map(fileToDataUrl)):(imagePaths.length===4?imagePaths:(p.images||[]));
+          if(imageData.length!==4){alert('Please upload exactly 4 images or enter exactly 4 image paths.'); return false;}
+
+          const names=Array.from(document.querySelectorAll('input[name="variationNames"]')).map((node)=>node.value.trim()).filter(Boolean);
+          const prices=Array.from(document.querySelectorAll('input[name="variationPrices"]')).map((node)=>Number(node.value));
+          const variationPathInputs=document.querySelectorAll('input[name="variationImagePaths"]');
+          const variationUploadInputs=document.querySelectorAll('.variation-image-upload');
+          const variationItems=[];
+          for(let i=0;i<names.length;i+=1){
+            const variationFiles=variationUploadInputs[i]&&variationUploadInputs[i].files?Array.from(variationUploadInputs[i].files):[];
+            const variationPaths=String(variationPathInputs[i]?.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
+            const uploadedImages=variationFiles.length?await Promise.all(variationFiles.map(fileToDataUrl)):[];
+            variationItems.push({name:names[i],price:Number(prices[i])||0,images:[...new Set([...variationPaths,...uploadedImages])]});
+          }
+
+          if(!variationItems.length||variationItems.some((item)=>!item.name||!Number.isFinite(item.price)||item.price<0)){alert('Please add at least one complete variation.'); return false;}
+          const record={id:p.id||'rak-'+Date.now(),name:form.get('name'),category:form.get('category'),description:form.get('description'),fullDescription:form.get('fullDescription'),variations:variationItems,price:variationItems[0].price||0,images:imageData};
+          if(index===null){data.products.push(record);} else {data.products[index]=record;}
+          return true;
+        }
+      );
+
+      const addVariationButton=document.getElementById('addVariation');
+      if(addVariationButton){
+        addVariationButton.onclick=()=>{
+          const rowsContainer=document.getElementById('variationRows');
+          const row=document.createElement('div');
+          row.className='variation-editor-row';
+          row.style.cssText='display:grid;grid-template-columns:1fr 150px 1fr auto;gap:8px;margin-bottom:12px';
+          row.innerHTML='<input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><div class="variation-image-stack" style="display:flex;flex-direction:column;gap:6px;min-width:0"><input type="file" class="variation-image-upload" accept="image/*" multiple style="width:100%"><input type="text" name="variationImagePaths" placeholder="variation image paths or urls" style="width:100%"><div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px"></div></div><button type="button" class="btn danger remove-variation" title="Remove variation">×</button>';
+          rowsContainer.appendChild(row);
+          const upload=row.querySelector('.variation-image-upload');
+          const pathInput=row.querySelector('input[name="variationImagePaths"]');
+          const preview=row.querySelector('.variation-image-preview');
+          upload.onchange=async()=>{
+            const files=[...(upload.files||[])];
+            if(!files.length){return;}
+            const current=String(pathInput.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
+            const urls=await Promise.all(files.map(fileToDataUrl));
+            const merged=[...new Set([...current,...urls])];
+            pathInput.value=merged.join(', ');
+            preview.innerHTML=merged.map((src)=>'<img src="'+src+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block">').join('');
+          };
+          bindVariationRemove();
+        };
+      }
+      bindVariationRemove();
+    }
     function openReview(index=null){const r=index===null?{title:'',text:'',rating:5,date:'',author:'',product:'',image:''}:data.reviews[index];openModal(index===null?'Add review':'Edit review',`<div class="form-grid"><div class="field"><label>Review title <span>*</span></label><input name="title" required value="${esc(r.title)}"></div><div class="field"><label>Rating <span>*</span></label><select name="rating">${[5,4,3,2,1].map(n=>`<option ${n===Number(r.rating)?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Date <span>*</span></label><input name="date" type="date" required value="${esc(r.date)}"></div><div class="field"><label>Author <span>*</span></label><input name="author" required value="${esc(r.author)}"></div><div class="field"><label>Product <span>*</span></label><input name="product" required value="${esc(r.product)}"></div><div class="field"><label>Review image path</label><input name="image" value="${esc(r.image)}" placeholder="assets/images/..."></div><div class="field"><label>Upload review image</label><input name="imageFile" type="file" accept="image/*"><small style="color:var(--muted)">Choose an image from your computer.</small></div><div class="field full"><label>Review text <span>*</span></label><textarea name="text" required>${esc(r.text)}</textarea></div></div><div class="form-actions"><button class="btn primary">Save review</button></div>`,async form=>{const imageFile=form.get('imageFile');const uploadedImage=imageFile instanceof File&&imageFile.size?await fileToDataUrl(imageFile):'';const record={id:r.id||'rev-'+Date.now(),title:form.get('title'),rating:Number(form.get('rating')),date:form.get('date'),author:form.get('author'),product:form.get('product'),image:uploadedImage||form.get('image'),text:form.get('text')};if(index===null)data.reviews.push(record);else data.reviews[index]=record})}
     const repairMojibake=()=>{const replacements=new Map([[String.fromCharCode(0x00e2,0x0152,0x201a),'⌂'],[String.fromCharCode(0x00e2,0x2013,0x00a4),'▤'],[String.fromCharCode(0x00e2,0x2013,0x00a6),'▦'],[String.fromCharCode(0x00e2,0x2014,0x00ab),'◫'],[String.fromCharCode(0x00e2,0x2013,0x00b6),'▶'],[String.fromCharCode(0x00e2,0x02dc,0x2026),'★'],[String.fromCharCode(0x00e2,0x0161,0x2122),'⚙'],[String.fromCharCode(0x00e2,0x2020,0x2014),'↗'],[String.fromCharCode(0x00c3,0x2014),'×'],[String.fromCharCode(0x00c2,0x00b7),' - '],[String.fromCharCode(0x00e2,0x02c6,0x2019),'-'],[String.fromCharCode(0x00e2,0x20ac,0x00b9),'‹'],[String.fromCharCode(0x00e2,0x20ac,0x00ba),'›'],[String.fromCharCode(0x00e2,0x20ac,0x00a2),'•'],[String.fromCharCode(0x00e2,0x0153,0x017d),'✎']]);document.querySelectorAll('*').forEach(element=>{if(element.children.length)return;let text=element.textContent;replacements.forEach((replacement,source)=>{text=text.split(source).join(replacement)});if(text!==element.textContent)element.textContent=text})};
     function renderAll(){renderOverview();renderOrders();renderProducts();renderPages();renderVideos();renderReviews();$('#announcement').value=data.announcement;$('#shipping').value=data.shipping;repairMojibake()}
