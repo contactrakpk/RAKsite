@@ -112,7 +112,8 @@
   </div>
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
-  <script src="assets/js/config.js"></script>
+  <script src="assets/js/config.js?v=20260925schemafix"></script>
+  <script src="assets/js/script.js?v=20260925schemafix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
@@ -286,10 +287,28 @@
     const showToast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
     const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     function renderOverview(){ $('#statProducts').textContent=data.products.length;$('#statReviews').textContent=data.reviews.length;$('#statShipping').textContent=Number(data.shipping).toLocaleString();$('#statMedia').textContent=Object.values(data.pages).length*2+data.shopVideos.length+data.categoryVideos.length;$('#recentProducts').innerHTML=(data.products.length?data.products.slice(-5).reverse():[]).map(product=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(product.images?.[0]||'')}" alt=""><b>${esc(product.name)}</b></div></td><td>${esc(product.category)}</td><td>PKR ${Number(product.price).toLocaleString()}</td><td><span class="badge">Published</span></td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">No products yet. Add your first product.</div></td></tr>' }
+    async function safeSupabaseOrderQuery(table, select, fallbackColumns = ['created_at', 'id']) {
+      for (const column of fallbackColumns) {
+        try {
+          const { data, error } = await _supabase.from(table).select(select).order(column, { ascending: false });
+          if (error) {
+            console.warn(`[Supabase] ${table} sort by ${column} failed.`, error);
+            continue;
+          }
+          return Array.isArray(data) ? data : [];
+        } catch (error) {
+          console.warn(`[Supabase] ${table} sort by ${column} crashed.`, error);
+        }
+      }
+      console.warn(`[Supabase] ${table} could not be ordered safely; using empty fallback.`);
+      return [];
+    }
     async function getOrders(){
-      const {data:remoteOrders,error}=await _supabase.from('orders').select('*').order('created_at',{ascending:false});
-      if(error){console.error(error);showToast(`Could not load orders: ${error.message||'check permissions'}`);return[];}
-      return (remoteOrders||[]).map(order=>({
+      const remoteOrders = await safeSupabaseOrderQuery('orders', '*', ['created_at', 'id']);
+      if (!remoteOrders.length && !remoteOrders) {
+        return [];
+      }
+      return remoteOrders.map(order=>({
         databaseId:order.id,
         id:order.order_number,
         createdAt:order.created_at,
@@ -422,15 +441,31 @@
     const titles={overview:['Overview','A clear view of your store content and publishing workflow.'],orders:['Orders','Review customer details and manage incoming orders.'],products:['Products','Build the catalog your customers shop from.'],pages:['Pages & media','Control every hero image and banner across the storefront.'],videos:['Video library','Upload, organize and connect your commerce videos.'],reviews:['Reviews','Keep your customer proof current and credible.'],settings:['Settings','Global store messaging, shipping and publishing tools.']};
     $$('.nav-item').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.view;$$('.nav-item').forEach(x=>x.classList.toggle('active',x===btn));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));$('#viewTitle').textContent=titles[id][0];$('#viewSubtitle').textContent=titles[id][1];if(id==='orders')renderOrders();window.scrollTo(0,0)});$$('[data-open]').forEach(b=>b.onclick=()=>{const target=b.dataset.open;document.querySelector(`[data-view="${target}"]`).click()});$('#addProductBtn').onclick=()=>openProduct();$('#addReviewBtn').onclick=()=>openReview();$('#closeModal').onclick=()=>$('#modalBackdrop').classList.remove('open');$('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')e.currentTarget.classList.remove('open')};$('#settingsForm').onsubmit=async e=>{e.preventDefault();data.announcement=$('#announcement').value;data.shipping=Number($('#shipping').value);try{await persistSettings();localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Settings saved to Supabase');renderOverview()}catch(error){console.error(error);showToast(`Could not save settings: ${error.message||'check permissions'}`)}};$('#previewBtn').onclick=()=>window.open('index.html','_blank');$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rak-cms-content.json';a.click()};
     async function loadRemoteCmsData(){
-      const [{data:pages,error:pagesError},{data:reviews,error:reviewsError}]=await Promise.all([
-        _supabase.from('pages').select('name,hero_url,banner_url'),
-        _supabase.from('reviews').select('*, products(name)').order('review_date',{ascending:false})
-      ]);
-      if(pagesError)throw pagesError;
-      if(reviewsError)throw reviewsError;
+      let pages = [];
+      let reviews = [];
+
+      try {
+        const pageResult = await _supabase.from('pages').select('name,hero_url,banner_url');
+        if (pageResult.error) {
+          console.warn('Supabase pages fetch failed; leaving local CMS data intact.', pageResult.error);
+        } else {
+          pages = Array.isArray(pageResult.data) ? pageResult.data : [];
+        }
+      } catch (error) {
+        console.warn('Supabase pages query crashed; leaving local CMS data intact.', error);
+      }
+
+      try {
+        const reviewResult = await safeSupabaseOrderQuery('reviews', '*, products(name)', ['review_date', 'created_at', 'date', 'id']);
+        reviews = Array.isArray(reviewResult) ? reviewResult : [];
+      } catch (error) {
+        console.warn('Supabase reviews fetch failed; leaving local CMS data intact.', error);
+        reviews = [];
+      }
+
       data.pages=Object.fromEntries(categories.map(category=>[category,{hero:'',banner:''}]));
-      (pages||[]).forEach(page=>{data.pages[page.name]={hero:page.hero_url||'',banner:page.banner_url||''};});
-      data.reviews=(reviews||[]).map(review=>({...review,id:review.id,date:review.review_date,text:review.body,image:review.image_url||'',product:review.products?.name||''}));
+      pages.forEach(page=>{data.pages[page.name]={hero:page.hero_url||'',banner:page.banner_url||''};});
+      data.reviews=reviews.map(review=>({...review,id:review.id,date:review.review_date||review.created_at||review.date||'',text:review.body||review.text||'',image:review.image_url||review.image||'',product:review.products?.name||review.product||''}));
       localStorage.setItem('rak-cms-data',JSON.stringify(data));
       return data;
     }

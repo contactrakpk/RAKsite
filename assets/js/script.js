@@ -79,14 +79,25 @@ const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window._supabase = _supabase;
 
 const fetchSupabaseProducts = async () => {
-  const { data, error } = await _supabase.from('products').select('*');
-  if (error) {
-    console.error('Supabase products fetch failed:', error);
-    return null;
-  }
+  try {
+    const { data, error } = await _supabase.from('products').select('*');
+    if (error) {
+      console.warn('Supabase products fetch failed; using empty fallback.', error);
+      return [];
+    }
 
-  console.log('Supabase products:', data);
-  return data;
+    if (!data) {
+      console.warn('Supabase products returned no data; using empty fallback.');
+      return [];
+    }
+
+    const safeData = Array.isArray(data) ? data : [];
+    console.log('Supabase products:', safeData);
+    return safeData;
+  } catch (error) {
+    console.warn('Supabase products request crashed; using empty fallback.', error);
+    return [];
+  }
 };
 
 window.fetchSupabaseProducts = fetchSupabaseProducts;
@@ -175,26 +186,43 @@ if (cmsData?.products?.length) {
 }
 
 const runSupabaseOrderedQuery = async (table, select, filters = []) => {
-  const query = _supabase.from(table).select(select);
-  filters.forEach(({ field, op, value }) => {
-    if (field && op && value !== undefined) query[op](field, value);
-  });
-
-  const attemptOrder = async (column) => {
-    try {
-      return await query.order(column, { ascending: false });
-    } catch (error) {
-      return { data: [], error };
-    }
+  const orderStrategy = {
+    products: ['created_at', 'id'],
+    reviews: ['review_date', 'created_at', 'date', 'id'],
+    videos: ['created_at', 'id'],
+    pages: ['created_at', 'id'],
+    settings: ['created_at', 'id'],
+    default: ['created_at', 'id']
   };
 
-  const createdAtResult = await attemptOrder('created_at');
-  if (!createdAtResult.error) return createdAtResult;
+  const orderColumns = orderStrategy[table] || orderStrategy.default;
 
-  const fallbackResult = await attemptOrder('id');
-  if (!fallbackResult.error) return fallbackResult;
+  for (const column of orderColumns) {
+    const query = _supabase.from(table).select(select);
+    filters.forEach(({ field, op, value }) => {
+      if (field && op && value !== undefined && typeof query[op] === 'function') {
+        query[op](field, value);
+      }
+    });
 
-  return createdAtResult;
+    try {
+      const result = await query.order(column, { ascending: false });
+      if (result?.error) {
+        console.warn(`[Supabase] ${table} ordering by ${column} failed; trying fallback.`, result.error);
+        continue;
+      }
+      if (!result || !Array.isArray(result.data)) {
+        console.warn(`[Supabase] ${table} returned null data for ${column}; using empty fallback.`);
+        return { data: [], error: null };
+      }
+      return result;
+    } catch (error) {
+      console.warn(`[Supabase] ${table} order fallback (${column}) failed.`, error);
+    }
+  }
+
+  console.warn(`[Supabase] ${table} could not be ordered safely; returning empty fallback.`);
+  return { data: [], error: null };
 };
 
 const videoMedia = {
@@ -227,14 +255,15 @@ const loadSupabaseContent = async () => {
       _supabase.from('pages').select('name,hero_url,banner_url')
     ]);
 
-    if (productResult.error) throw productResult.error;
-    if (reviewResult.error) throw reviewResult.error;
-    if (pageResult.error) throw pageResult.error;
-    const remoteProducts = normalizeProducts(productResult.data);
-    const remoteReviews = normalizeProducts(reviewResult.data);
-    const remoteVideos = normalizeProducts(videoResult.data);
-    const remoteSettings = normalizeProducts(settingsResult.data);
-    const remotePages = normalizeProducts(pageResult.data);
+    if (productResult?.error) console.warn('Supabase products query failed; using cached content.', productResult.error);
+    if (reviewResult?.error) console.warn('Supabase reviews query failed; using cached content.', reviewResult.error);
+    if (pageResult?.error) console.warn('Supabase pages query failed; using cached content.', pageResult.error);
+
+    const remoteProducts = normalizeProducts(productResult?.data);
+    const remoteReviews = normalizeProducts(reviewResult?.data);
+    const remoteVideos = normalizeProducts(videoResult?.data);
+    const remoteSettings = normalizeProducts(settingsResult?.data);
+    const remotePages = normalizeProducts(pageResult?.data);
 
     if (Array.isArray(remoteSettings)) {
       const settings = Object.fromEntries(remoteSettings.map((setting) => [setting.key, setting.value]));
