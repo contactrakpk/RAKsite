@@ -767,7 +767,11 @@ const createProductCard = (product) => {
   const variations = (product.variations?.length ? product.variations : []).map((variation) =>
     typeof variation === 'string' ? variation : variation.name
   ).filter(Boolean);
-  const productDescription = product.description || `${product.type} product with a quality finish.`;
+  const rawShortDescription = product.short_description || product.shortDescription || product.description || product.fullDescription || '';
+  const productDescription = String(rawShortDescription || '').trim() || 'Premium product selection.';
+  const compactDescription = productDescription.length > 80
+    ? `${productDescription.slice(0, 77).trim()}...`
+    : productDescription;
   card.innerHTML = `
     <div class="card-image">
       <img class="card-image-primary" src="${resolveProductImage(primaryProductImage)}" alt="${productName}" />
@@ -779,7 +783,7 @@ const createProductCard = (product) => {
     <div class="card-info">
       <h3 class="product-name">${productName}</h3>
       ${variations.length ? `<div class="product-badges">${variations.map((variation) => `<span>${variation}</span>`).join('')}</div>` : ''}
-      <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description">${productDescription}</span></p>
+      <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${compactDescription}</span></p>
       <p class="product-price">${displayPrice}</p>
     </div>
   `;
@@ -1529,11 +1533,11 @@ const renderDetailPage = () => {
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
-  const fullDescription = product.fullDescription || '';
-  const shortDescription = product.description || '';
+  const fullDescription = product.fullDescription || product.description || '';
+  const shortDescription = product.short_description || product.shortDescription || product.description || '';
   const renderFormattedText = (value = '') => String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '<br>');
   descEl.innerHTML = renderFormattedText(fullDescription);
-  if (shortDescEl) shortDescEl.innerHTML = renderFormattedText(shortDescription);
+  if (shortDescEl) shortDescEl.innerHTML = renderFormattedText(shortDescription || 'Premium product selection.');
   categoryEl.textContent = product.category;
   qtyEl.textContent = '1';
 
