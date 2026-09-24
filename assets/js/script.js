@@ -83,15 +83,23 @@ document.addEventListener('click', (event) => {
   }, 180);
 });
 
-const { createClient } = supabase;
+const supabaseClient = typeof supabase !== 'undefined' ? supabase : (window.supabaseClient || null);
+const { createClient } = supabaseClient || {};
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 const SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
 const SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
-const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window._supabase = _supabase;
+const _supabase = createClient && SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+if (_supabase) {
+  window._supabase = _supabase;
+} else {
+  window._supabase = window._supabase || null;
+}
 
 const fetchSupabaseProducts = async () => {
   try {
@@ -201,6 +209,11 @@ if (cmsData?.products?.length) {
 }
 
 const runSupabaseOrderedQuery = async (table, select, filters = []) => {
+  if (!_supabase || typeof _supabase.from !== 'function') {
+    console.warn('[Supabase] missing client; skipping ordered query for table:', table);
+    return { data: [], error: null };
+  }
+
   const orderStrategy = {
     products: ['created_at', 'id'],
     reviews: ['review_date', 'created_at', 'date', 'id'],
@@ -262,12 +275,15 @@ const normalizeProducts = (value) => Array.isArray(value) ? value : [];
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
+    const fallbackSettingsResult = { data: [], error: null };
+    const fallbackPagesResult = { data: [], error: null };
+
     const request = Promise.all([
       runSupabaseOrderedQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseOrderedQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseOrderedQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
-      _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
-      _supabase.from('pages').select('name,hero_url,banner_url')
+      _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
+      _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
     ]);
 
     const [productResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
