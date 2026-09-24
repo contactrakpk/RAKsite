@@ -659,13 +659,16 @@ const createProductCard = (product) => {
     product.name || product.title || product.productName || product.product_name || product.category || 'Product'
   ).trim() || 'Product';
   const productImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  const primaryProductImage = product.image_url || product.image || product.featured_image || 'assets/images/placeholder.jpg';
+  const productPrice = Number(product.price || product.base_price || (product.product_variations && product.product_variations[0]?.price) || 0);
+  const displayPrice = productPrice > 0 ? `Rs. ${productPrice.toLocaleString()}/-` : 'Price unavailable';
   const variations = (product.variations?.length ? product.variations : []).map((variation) =>
     typeof variation === 'string' ? variation : variation.name
   ).filter(Boolean);
   const productDescription = product.description || `${product.type} product with a quality finish.`;
   card.innerHTML = `
     <div class="card-image">
-      ${productImages[0] ? `<img class="card-image-primary" src="${resolveProductImage(productImages[0])}" alt="${productName}" />` : ''}
+      <img class="card-image-primary" src="${resolveProductImage(productImages[0] || primaryProductImage)}" alt="${productName}" />
       ${productImages[1] ? `<img class="card-image-secondary" src="${resolveProductImage(productImages[1])}" alt="" aria-hidden="true" />` : ''}
       <div class="card-action">
         <button type="button" class="add-cart-card-btn" data-product-id="${product.id}" aria-label="Add to cart"></button>
@@ -675,7 +678,7 @@ const createProductCard = (product) => {
       <h3 class="product-name">${productName}</h3>
       ${variations.length ? `<div class="product-badges">${variations.map((variation) => `<span>${variation}</span>`).join('')}</div>` : ''}
       <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description">${productDescription}</span></p>
-      <p class="product-price">Rs. ${Number(product.price).toLocaleString()}/-</p>
+      <p class="product-price">${displayPrice}</p>
     </div>
   `;
   card.querySelectorAll('.card-image img').forEach((cardImage) => {
