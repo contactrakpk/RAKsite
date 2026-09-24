@@ -12,4 +12,4 @@ window.RAK_API_URL = window.RAK_API_URL || (
 window.API_BASE_URL = window.API_BASE_URL || window.RAK_API_URL;
 
 window.RAK_SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
-window.RAK_SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+window.RAK_SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocnhwbWdsdWNzdHBveWRka3d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODA5MTEsImV4cCI6MjEwNTQ1NjkxMX0.acjMPUcnrYwPhj2SQJj9h6plN0naKftw3mgDI31XS-U';
