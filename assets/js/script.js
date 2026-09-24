@@ -252,6 +252,55 @@ const cartState = {
 
 const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
 const normalizeProducts = (value) => Array.isArray(value) ? value : [];
+
+const getVariationPriceValue = (variation = {}) => {
+  const prices = [variation.sale_price, variation.regular_price, variation.price];
+  for (const value of prices) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+  return 0;
+};
+
+const getLowestVariationPrice = (variations = []) => {
+  const prices = variations
+    .map((variation) => getVariationPriceValue(variation))
+    .filter((value) => value > 0);
+
+  return prices.length ? Math.min(...prices) : 0;
+};
+
+const resolveCardProductImage = (product = {}) => {
+  const directImage = product.image_url || product.image || product.featured_image;
+  if (directImage) return directImage;
+
+  const productImages = Array.isArray(product.product_images) ? product.product_images : [];
+  const firstProductImage = productImages.find((image) => image && (image.image_url || image.url || image.src || image.image));
+  if (firstProductImage) return firstProductImage.image_url || firstProductImage.url || firstProductImage.src || firstProductImage.image;
+
+  const productVariations = Array.isArray(product.product_variations) ? product.product_variations : [];
+  for (const variation of productVariations) {
+    const variantImage = variation?.image_url || variation?.image || variation?.featured_image || variation?.images?.[0];
+    if (variantImage) return variantImage;
+  }
+
+  return 'assets/images/placeholder.jpg';
+};
+
+const resolveCardProductPrice = (product = {}) => {
+  const directPrice = Number(product.price);
+  if (Number.isFinite(directPrice) && directPrice > 0) return directPrice;
+
+  const variations = Array.isArray(product.product_variations) ? product.product_variations : [];
+  const lowestVariationPrice = getLowestVariationPrice(variations);
+  if (lowestVariationPrice > 0) return lowestVariationPrice;
+
+  const basePrice = Number(product.base_price);
+  if (Number.isFinite(basePrice) && basePrice > 0) return basePrice;
+
+  return 0;
+};
+
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
@@ -260,13 +309,15 @@ const loadSupabaseContent = async () => {
 
     const request = Promise.all([
       runSupabaseSimpleQuery('products', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('product_variations', '*'),
+      runSupabaseSimpleQuery('product_images', '*'),
       runSupabaseSimpleQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseSimpleQuery('videos', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
     ]);
 
-    const [productResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
+    const [productResult, productVariationResult, productImageResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
       request,
       new Promise((_, reject) => window.setTimeout(() => reject(new Error('Supabase storefront fetch timed out after 8 seconds')), 8000))
     ]);
@@ -276,10 +327,37 @@ const loadSupabaseContent = async () => {
     if (pageResult?.error) console.warn('Supabase pages query failed; using cached content.', pageResult.error);
 
     const remoteProducts = normalizeProducts(productResult?.data);
+    const remoteProductVariations = normalizeProducts(productVariationResult?.data);
+    const remoteProductImages = normalizeProducts(productImageResult?.data);
     const remoteReviews = normalizeProducts(reviewResult?.data);
     const remoteVideos = normalizeProducts(videoResult?.data);
     const remoteSettings = normalizeProducts(settingsResult?.data);
     const remotePages = normalizeProducts(pageResult?.data);
+
+    const productVariationMap = new Map();
+    remoteProductVariations.forEach((variation) => {
+      const productId = String(variation.product_id ?? variation.productId ?? '');
+      if (!productId) return;
+      if (!productVariationMap.has(productId)) productVariationMap.set(productId, []);
+      productVariationMap.get(productId).push({
+        ...variation,
+        name: variation.name || variation.variation_name || variation.title || 'Default',
+        price: Number(variation.price ?? variation.sale_price ?? variation.regular_price ?? 0),
+        sale_price: Number(variation.sale_price ?? variation.price ?? 0),
+        regular_price: Number(variation.regular_price ?? variation.price ?? 0)
+      });
+    });
+
+    const productImageMap = new Map();
+    remoteProductImages.forEach((image) => {
+      const productId = String(image.product_id ?? image.productId ?? '');
+      if (!productId) return;
+      if (!productImageMap.has(productId)) productImageMap.set(productId, []);
+      productImageMap.get(productId).push({
+        ...image,
+        image_url: image.image_url || image.url || image.src || image.image || ''
+      });
+    });
 
     if (Array.isArray(remoteSettings)) {
       const settings = Object.fromEntries(remoteSettings.map((setting) => [setting.key, setting.value]));
@@ -292,31 +370,51 @@ const loadSupabaseContent = async () => {
     if (remoteProducts.length) {
       remoteProducts.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
       products = normalizeProducts(remoteProducts.map((product) => {
-        const variations = Array.isArray(product.product_variations) ? product.product_variations : [];
-        const variationImages = Array.isArray(product.product_variation_images) ? product.product_variation_images : [];
-        const images = Array.isArray(product.product_images) ? product.product_images : [];
-        const variationMap = variationImages.reduce((map, image) => {
-          const key = String(image.variation_name || 'Default');
-          if (!map[key]) map[key] = [];
-          map[key].push(image.image_url);
-          return map;
-        }, {});
+        const productId = String(product.id ?? '');
+        const productVariations = [
+          ...(Array.isArray(product.product_variations) ? product.product_variations : []),
+          ...(productId ? productVariationMap.get(productId) || [] : [])
+        ];
+        const productImages = [
+          ...(Array.isArray(product.product_images) ? product.product_images : []),
+          ...(productId ? productImageMap.get(productId) || [] : [])
+        ];
 
-        return {
-          id: product.id,
-          name: product.name,
-          category: product.category,
-          type: product.category,
-          description: product.short_description || '',
-          fullDescription: product.description || '',
-          images: images.map((image) => image.image_url).filter(Boolean),
-          variations: variations.map((variation) => ({
+        const normalizedVariations = productVariations.map((variation) => ({
+          ...variation,
+          name: variation.name || variation.variation_name || variation.title || 'Default',
+          price: Number(variation.price ?? variation.sale_price ?? variation.regular_price ?? 0) || 0,
+          sale_price: Number(variation.sale_price ?? variation.price ?? 0) || 0,
+          regular_price: Number(variation.regular_price ?? variation.price ?? 0) || 0,
+          image_url: variation.image_url || variation.image || variation.featured_image || '',
+          images: Array.isArray(variation.images) ? variation.images.filter(Boolean) : []
+        }));
+
+        const normalizedImages = productImages
+          .map((image) => ({
+            ...image,
+            image_url: image.image_url || image.url || image.src || image.image || ''
+          }))
+          .filter((image) => image.image_url);
+
+        const mergedProduct = {
+          ...product,
+          product_variations: normalizedVariations,
+          product_images: normalizedImages,
+          image_url: product.image_url || product.image || product.featured_image || resolveCardProductImage({ ...product, product_variations: normalizedVariations, product_images: normalizedImages }),
+          price: resolveCardProductPrice({ ...product, product_variations: normalizedVariations, product_images: normalizedImages }),
+          images: normalizedImages.map((image) => image.image_url).filter(Boolean),
+          variations: normalizedVariations.map((variation) => ({
             name: variation.name,
             price: Number(variation.price) || 0,
-            images: (variationMap[variation.name] || []).filter(Boolean)
-          })),
-          price: Number(variations[0]?.price) || 0
+            sale_price: Number(variation.sale_price) || 0,
+            regular_price: Number(variation.regular_price) || 0,
+            image_url: variation.image_url || '',
+            images: variation.images && variation.images.length ? variation.images : []
+          }))
         };
+
+        return mergedProduct;
       }));
     }
 
@@ -659,8 +757,12 @@ const createProductCard = (product) => {
     product.name || product.title || product.productName || product.product_name || product.category || 'Product'
   ).trim() || 'Product';
   const productImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  const primaryProductImage = product.image_url || product.image || product.featured_image || 'assets/images/placeholder.jpg';
-  const productPrice = Number(product.price || product.base_price || (product.product_variations && product.product_variations[0]?.price) || 0);
+  const primaryProductImage = product.image_url || product.image || product.featured_image || productImages[0] || 'assets/images/placeholder.jpg';
+  const productPrice = Number(product.price) > 0
+    ? Number(product.price)
+    : Number(product.base_price) > 0
+      ? Number(product.base_price)
+      : getLowestVariationPrice(Array.isArray(product.product_variations) ? product.product_variations : []) || 0;
   const displayPrice = productPrice > 0 ? `Rs. ${productPrice.toLocaleString()}/-` : 'Price unavailable';
   const variations = (product.variations?.length ? product.variations : []).map((variation) =>
     typeof variation === 'string' ? variation : variation.name
@@ -668,7 +770,7 @@ const createProductCard = (product) => {
   const productDescription = product.description || `${product.type} product with a quality finish.`;
   card.innerHTML = `
     <div class="card-image">
-      <img class="card-image-primary" src="${resolveProductImage(productImages[0] || primaryProductImage)}" alt="${productName}" />
+      <img class="card-image-primary" src="${resolveProductImage(primaryProductImage)}" alt="${productName}" />
       ${productImages[1] ? `<img class="card-image-secondary" src="${resolveProductImage(productImages[1])}" alt="" aria-hidden="true" />` : ''}
       <div class="card-action">
         <button type="button" class="add-cart-card-btn" data-product-id="${product.id}" aria-label="Add to cart"></button>
