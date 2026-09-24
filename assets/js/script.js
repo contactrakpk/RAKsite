@@ -26,6 +26,21 @@ const hidePageLoader = () => {
   window.setTimeout(() => loader.remove(), 350);
 };
 
+const forceHideLoader = () => {
+  const loader = document.getElementById('pageLoader');
+  if (loader) {
+    loader.style.display = 'none';
+    loader.classList.add('is-hidden');
+  }
+
+  const legacyLoader = document.querySelector('#loadingSpinner, .loader');
+  if (legacyLoader) {
+    legacyLoader.style.display = 'none';
+  }
+
+  document.body.classList.remove('page-loading');
+};
+
 const waitForInitialStorefrontLoad = async () => {
   const start = Date.now();
   const minimumDelay = 500;
@@ -37,7 +52,7 @@ const waitForInitialStorefrontLoad = async () => {
       await new Promise((resolve) => window.setTimeout(resolve, minimumDelay - waited));
     }
   } finally {
-    hidePageLoader();
+    forceHideLoader();
   }
 };
 
@@ -247,12 +262,17 @@ const normalizeProducts = (value) => Array.isArray(value) ? value : [];
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
-    const [productResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.all([
+    const request = Promise.all([
       runSupabaseOrderedQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseOrderedQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseOrderedQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
       _supabase.from('pages').select('name,hero_url,banner_url')
+    ]);
+
+    const [productResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
+      request,
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error('Supabase storefront fetch timed out after 8 seconds')), 8000))
     ]);
 
     if (productResult?.error) console.warn('Supabase products query failed; using cached content.', productResult.error);
@@ -349,7 +369,16 @@ const loadSupabaseContent = async () => {
 const loadRemoteContent = async () => {
   if (!API_URL) return false;
   try {
-    const response = await fetch(`${API_URL}/api/content`);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+    let response;
+
+    try {
+      response = await fetch(`${API_URL}/api/content`, { signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+
     if (!response.ok) return false;
     const remote = await response.json();
     if (!supabaseContentLoaded && Array.isArray(remote.products)) {
@@ -1539,50 +1568,72 @@ const renderDetailPage = () => {
 
 const init = async () => {
   showPageLoader();
-  loadCart();
-  ensureCartPanel();
-  applyCmsPageMedia();
-  renderAnnouncement();
-  renderWhatsAppButton();
-  renderTrendingProducts();
-  await renderVideoShowcase();
-  await renderCategoryPage();
-  repairMojibake();
-  bindSearch();
-  updateCartUI();
-  bindCartEvents();
-  bindReviewCarousel();
-  if (window.location.pathname.includes('product-detail')) {
-    renderDetailPage();
-  }
-  if (window.location.pathname.includes('checkout')) {
-    renderCheckoutPage();
-  }
-  restoreScrollPosition();
-  await loadSupabaseContent();
-  if (supabaseContentLoaded) {
+
+  try {
+    loadCart();
+    ensureCartPanel();
     applyCmsPageMedia();
+    renderAnnouncement();
+    renderWhatsAppButton();
     renderTrendingProducts();
     await renderVideoShowcase();
     await renderCategoryPage();
-    renderShopReviews();
+    repairMojibake();
+    bindSearch();
     updateCartUI();
-    if (window.location.pathname.includes('product-detail')) renderDetailPage();
-    if (window.location.pathname.includes('checkout')) renderCheckoutPage();
-  }
-  const remoteLoaded = await loadRemoteContent();
-  if (remoteLoaded) {
-    await hydrateCmsVideos();
-    applyCmsPageMedia();
+    bindCartEvents();
+    bindReviewCarousel();
+    if (window.location.pathname.includes('product-detail')) {
+      renderDetailPage();
+    }
+    if (window.location.pathname.includes('checkout')) {
+      renderCheckoutPage();
+    }
+    restoreScrollPosition();
+
+    try {
+      await loadSupabaseContent();
+      if (supabaseContentLoaded) {
+        applyCmsPageMedia();
+        renderTrendingProducts();
+        await renderVideoShowcase();
+        await renderCategoryPage();
+        renderShopReviews();
+        updateCartUI();
+        if (window.location.pathname.includes('product-detail')) renderDetailPage();
+        if (window.location.pathname.includes('checkout')) renderCheckoutPage();
+      }
+    } catch (error) {
+      console.warn('Supabase storefront bootstrap failed; continuing with cached/local storefront content.', error);
+    }
+
+    try {
+      const remoteLoaded = await loadRemoteContent();
+      if (remoteLoaded) {
+        await hydrateCmsVideos();
+        applyCmsPageMedia();
+        renderTrendingProducts();
+        await renderVideoShowcase();
+        await renderCategoryPage();
+        renderShopReviews();
+        updateCartUI();
+        if (window.location.pathname.includes('product-detail')) renderDetailPage();
+        if (window.location.pathname.includes('checkout')) renderCheckoutPage();
+      }
+    } catch (error) {
+      console.warn('Remote content bootstrap failed; continuing with local storefront content.', error);
+    }
+  } catch (error) {
+    console.error('Storefront initialization failed; rendering cached/local content instead.', error);
+    renderAnnouncement();
+    renderWhatsAppButton();
     renderTrendingProducts();
-    await renderVideoShowcase();
-    await renderCategoryPage();
-    renderShopReviews();
-    updateCartUI();
     if (window.location.pathname.includes('product-detail')) renderDetailPage();
     if (window.location.pathname.includes('checkout')) renderCheckoutPage();
+  } finally {
+    forceHideLoader();
+    await waitForInitialStorefrontLoad();
   }
-  await waitForInitialStorefrontLoad();
 };
 
 window.addEventListener('storage', (event) => {
