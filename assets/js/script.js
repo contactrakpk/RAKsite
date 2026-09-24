@@ -208,49 +208,29 @@ if (cmsData?.products?.length) {
   products = [...products.filter((product) => !cmsIds.has(product.id)), ...cmsProducts];
 }
 
-const runSupabaseOrderedQuery = async (table, select, filters = []) => {
+const runSupabaseSimpleQuery = async (table, select, filters = []) => {
   if (!_supabase || typeof _supabase.from !== 'function') {
-    console.warn('[Supabase] missing client; skipping ordered query for table:', table);
+    console.warn('[Supabase] missing client; skipping query for table:', table);
     return { data: [], error: null };
   }
 
-  const orderStrategy = {
-    products: ['created_at', 'id'],
-    reviews: ['review_date', 'created_at', 'date', 'id'],
-    videos: ['created_at', 'id'],
-    pages: ['created_at', 'id'],
-    settings: ['created_at', 'id'],
-    default: ['created_at', 'id']
-  };
-
-  const orderColumns = orderStrategy[table] || orderStrategy.default;
-
-  for (const column of orderColumns) {
-    const query = _supabase.from(table).select(select);
+  try {
+    let query = _supabase.from(table).select(select);
     filters.forEach(({ field, op, value }) => {
       if (field && op && value !== undefined && typeof query[op] === 'function') {
-        query[op](field, value);
+        query = query[op](field, value);
       }
     });
 
-    try {
-      const result = await query.order(column, { ascending: false });
-      if (result?.error) {
-        console.warn(`[Supabase] ${table} ordering by ${column} failed; trying fallback.`, result.error);
-        continue;
-      }
-      if (!result || !Array.isArray(result.data)) {
-        console.warn(`[Supabase] ${table} returned null data for ${column}; using empty fallback.`);
-        return { data: [], error: null };
-      }
-      return result;
-    } catch (error) {
-      console.warn(`[Supabase] ${table} order fallback (${column}) failed.`, error);
+    const result = await query;
+    if (!result || !Array.isArray(result.data)) {
+      return { data: [], error: result?.error || null };
     }
+    return result;
+  } catch (error) {
+    console.warn(`[Supabase] query failed for ${table} without ordering.`, error);
+    return { data: [], error };
   }
-
-  console.warn(`[Supabase] ${table} could not be ordered safely; returning empty fallback.`);
-  return { data: [], error: null };
 };
 
 const videoMedia = {
@@ -279,9 +259,9 @@ const loadSupabaseContent = async () => {
     const fallbackPagesResult = { data: [], error: null };
 
     const request = Promise.all([
-      runSupabaseOrderedQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
-      runSupabaseOrderedQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
-      runSupabaseOrderedQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
     ]);
@@ -310,6 +290,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteProducts.length) {
+      remoteProducts.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       products = normalizeProducts(remoteProducts.map((product) => {
         const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
         const variationImages = (product.product_variation_images || []).reduce((map, image) => {
@@ -338,6 +319,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteReviews.length) {
+      remoteReviews.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       const productNames = new Map(products.map((product) => [String(product.id), product.name]));
       cmsReviews = remoteReviews.map((review) => ({
         ...review,
@@ -353,6 +335,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteVideos.length) {
+      remoteVideos.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       const productById = new Map(products.map((product) => [String(product.id), product]));
       const normalizedVideos = remoteVideos
         .filter((video) => video.video_url)
