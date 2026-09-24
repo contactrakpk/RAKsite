@@ -259,9 +259,9 @@ const loadSupabaseContent = async () => {
     const fallbackPagesResult = { data: [], error: null };
 
     const request = Promise.all([
-      runSupabaseSimpleQuery('products', '*, product_images(image_url, sort_order), product_variations(name, price, sort_order), product_variation_images(variation_name, image_url, sort_order)', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('products', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseSimpleQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
-      runSupabaseSimpleQuery('videos', 'id,page_slug,title,video_url,poster_url,product_id,sort_order,status', [{ field: 'status', op: 'eq', value: 'published' }]),
+      runSupabaseSimpleQuery('videos', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
     ]);
@@ -290,16 +290,18 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteProducts.length) {
-      remoteProducts.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+      remoteProducts.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
       products = normalizeProducts(remoteProducts.map((product) => {
-        const variations = (product.product_variations || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
-        const variationImages = (product.product_variation_images || []).reduce((map, image) => {
+        const variations = Array.isArray(product.product_variations) ? product.product_variations : [];
+        const variationImages = Array.isArray(product.product_variation_images) ? product.product_variation_images : [];
+        const images = Array.isArray(product.product_images) ? product.product_images : [];
+        const variationMap = variationImages.reduce((map, image) => {
           const key = String(image.variation_name || 'Default');
           if (!map[key]) map[key] = [];
           map[key].push(image.image_url);
           return map;
         }, {});
-        const images = (product.product_images || []).sort((left, right) => Number(left.sort_order) - Number(right.sort_order));
+
         return {
           id: product.id,
           name: product.name,
@@ -311,7 +313,7 @@ const loadSupabaseContent = async () => {
           variations: variations.map((variation) => ({
             name: variation.name,
             price: Number(variation.price) || 0,
-            images: (variationImages[variation.name] || []).filter(Boolean)
+            images: (variationMap[variation.name] || []).filter(Boolean)
           })),
           price: Number(variations[0]?.price) || 0
         };
@@ -319,7 +321,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteReviews.length) {
-      remoteReviews.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+      remoteReviews.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
       const productNames = new Map(products.map((product) => [String(product.id), product.name]));
       cmsReviews = remoteReviews.map((review) => ({
         ...review,
@@ -335,7 +337,7 @@ const loadSupabaseContent = async () => {
     }
 
     if (remoteVideos.length) {
-      remoteVideos.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+      remoteVideos.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
       const productById = new Map(products.map((product) => [String(product.id), product]));
       const normalizedVideos = remoteVideos
         .filter((video) => video.video_url)
