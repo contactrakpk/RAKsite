@@ -1519,7 +1519,7 @@ const renderDetailPage = () => {
   const product = products.find((item) => sameProductId(item.id, productId) || String(item.slug || '').toLowerCase() === String(productId).toLowerCase() || String(item.name || '').toLowerCase() === String(productId).toLowerCase());
   if (!product) return;
 
-  const mainImage = document.getElementById('detailMainImage');
+  const mainImage = document.getElementById('main-product-image');
   const thumbs = document.getElementById('detailThumbs');
   const nameEl = document.getElementById('detailName');
   const typeEl = document.getElementById('detailType');
@@ -1592,20 +1592,27 @@ const renderDetailPage = () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
     thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
     <button type="button" class="detail-thumb" data-image-index="${index + 1}">
-      <img src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${fallbackImage}'" />
+      <img class="product-thumbnail" src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${fallbackImage}'" />
     </button>
     `).join('');
+    thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {
+      thumbnail.addEventListener('click', function () {
+        const currentMainImage = document.getElementById('main-product-image');
+        if (currentMainImage) {
+          currentMainImage.style.opacity = '0.55';
+          currentMainImage.src = this.src;
+          currentMainImage.addEventListener('load', () => { currentMainImage.style.opacity = '1'; }, { once: true });
+        }
+        thumbs.querySelectorAll('.product-thumbnail').forEach((thumb) => {
+          thumb.classList.remove('active');
+          thumb.closest('.detail-thumb')?.classList.remove('active');
+        });
+        this.classList.add('active');
+        this.closest('.detail-thumb')?.classList.add('active');
+      });
+    });
   };
   renderThumbnails();
-
-  thumbs.addEventListener('click', (event) => {
-    const thumb = event.target.closest('button.detail-thumb');
-    if (!thumb) return;
-    const imageIndex = Number(thumb.dataset.imageIndex);
-    [galleryImages[0], galleryImages[imageIndex]] = [galleryImages[imageIndex], galleryImages[0]];
-    mainImage.src = galleryImages[0];
-    renderThumbnails();
-  });
 
   const zoomModal = document.getElementById('detailZoomModal');
   const zoomImage = document.getElementById('detailZoomImage');
