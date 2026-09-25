@@ -113,22 +113,24 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsclean2"></script>
+  <script src="assets/js/script.js?v=20260925cmsiife"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
-    window.SUPABASE_URL = window.SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
-    window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+    (function () {
+      const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
+      window.SUPABASE_URL = window.SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
+      window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
-    if (!window.supabase) {
-      const lib = window.supabase || window.supabaseClient || null;
-      if (lib && typeof lib.createClient === 'function') {
-        window.supabase = lib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      if (!window.supabase) {
+        const lib = window.supabase || window.supabaseClient || null;
+        if (lib && typeof lib.createClient === 'function') {
+          window.supabase = lib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        }
       }
-    }
 
-    window._supabase = window.supabase || window._supabase || null;
-    console.info('CMS Supabase project:',new URL(window.SUPABASE_URL).origin);
+      window._supabase = window.supabase || window._supabase || null;
+      const _supabase = window._supabase;
+      console.info('CMS Supabase project:',new URL(window.SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
     const setStoredToken=(token)=> token ? localStorage.setItem('rak-admin-token', token) : localStorage.removeItem('rak-admin-token');
@@ -483,6 +485,7 @@
         loadRemoteCmsData().then(renderAll).catch(error=>console.warn('Could not refresh CMS content',error));
         try { const {data:authData}=await _supabase.auth.getUser(); if(authData.user?.email)$('#accountEmail').value=authData.user.email; }catch(error){ console.warn('Could not load admin email',error); }
       }
+    })();
     })();
   </script>
 </body>
