@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925reviewsfinalmasterfix"></script>
+  <script src="assets/js/script.js?v=20260925bodycolumnfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -249,7 +249,7 @@
       const dateVal=String(review.date||'');
       const productVal=String(review.product||'');
       const imagePathVal=String(review.image||'');
-      const baseReview={title:titleVal,rating:parseInt(ratingVal,10)||5,author:authorVal,review_text:textVal,text:textVal,review_date:dateVal,date:dateVal,product_name:productVal,product:productVal,image_path:imagePathVal,review_image_path:imagePathVal};
+      const baseReview={title:titleVal,rating:parseInt(ratingVal,10)||5,author:authorVal,body:textVal,review_text:textVal,text:textVal,review_date:dateVal,date:dateVal,product_name:productVal,product:productVal,image_path:imagePathVal,review_image_path:imagePathVal};
       let storedRows=null;
       let lastError=null;
       let saved=false;
