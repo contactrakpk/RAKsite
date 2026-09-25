@@ -289,16 +289,32 @@ const getLowestVariationPrice = (variations = []) => {
 };
 
 const resolveCardProductImage = (product = {}) => {
-  const directImage = product.image_url || product.image || product.featured_image;
+  const firstValidImage = (values) => values
+    .map((value) => typeof value === 'string' ? value : value?.image_url || value?.url || value?.src || value?.image || '')
+    .map((value) => imageDataUrlSanitizer(value))
+    .find((value) => value && value !== imageFallbackUrl);
+  const directImage = firstValidImage([product.image_url, product.image, product.featured_image]);
   if (directImage) return directImage;
 
   const productImages = Array.isArray(product.product_images) ? product.product_images : [];
-  const firstProductImage = productImages.find((image) => image && (image.image_url || image.url || image.src || image.image));
-  if (firstProductImage) return firstProductImage.image_url || firstProductImage.url || firstProductImage.src || firstProductImage.image;
+  const firstProductImage = firstValidImage(productImages);
+  if (firstProductImage) return firstProductImage;
 
-  const productVariations = Array.isArray(product.product_variations) ? product.product_variations : [];
+  const variationImages = Array.isArray(product.variation_images) ? product.variation_images : [];
+  const firstVariationImage = firstValidImage(variationImages);
+  if (firstVariationImage) return firstVariationImage;
+
+  const productVariations = [
+    ...(Array.isArray(product.product_variations) ? product.product_variations : []),
+    ...(Array.isArray(product.variations) ? product.variations : [])
+  ];
   for (const variation of productVariations) {
-    const variantImage = variation?.image_url || variation?.image || variation?.featured_image || variation?.images?.[0];
+    const variantImage = firstValidImage([
+      variation?.image_url,
+      variation?.image,
+      variation?.featured_image,
+      ...(Array.isArray(variation?.images) ? variation.images : [])
+    ]);
     if (variantImage) return variantImage;
   }
 
@@ -818,7 +834,7 @@ const createProductCard = (product) => {
     product.name || product.title || product.productName || product.product_name || product.category || 'Product'
   ).trim() || 'Product';
   const productImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  const primaryProductImage = product.image_url || product.image || product.featured_image || productImages[0] || 'assets/images/placeholder.jpg';
+  const primaryProductImage = resolveCardProductImage(product) || productImages[0] || 'assets/images/placeholder.jpg';
   const productPrice = Number(product.price) > 0
     ? Number(product.price)
     : Number(product.base_price) > 0
@@ -1712,7 +1728,7 @@ const renderDetailPage = async () => {
     variationsEl.querySelectorAll('.variation-pill').forEach((pill) => pill.classList.toggle('active', pill === button));
     priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
     const primary = galleryImages[0] || product.images?.[0] || fallbackImage;
-    mainImage.src = primary;
+    mainImage.src = getValidImgSrc(primary);
     mainImage.alt = `${product.name} - ${selectedVariation.name}`;
     renderThumbnails();
   };
@@ -1725,7 +1741,7 @@ const renderDetailPage = async () => {
     `).join('');
     thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {
       thumbnail.addEventListener('click', function () {
-        const currentMainImage = document.getElementById('main-product-image');
+        const currentMainImage = mainImage;
         if (currentMainImage) {
           currentMainImage.style.opacity = '0.55';
           currentMainImage.src = getValidImgSrc(this.dataset.fullSrc || this.src);
