@@ -763,6 +763,8 @@ const imageDataUrlSanitizer = (source) => {
   return imageFallbackUrl;
 };
 window.cleanImageDataUrl = imageDataUrlSanitizer;
+const formatImageSrc = (imgStr) => imageDataUrlSanitizer(imgStr);
+window.formatImageSrc = formatImageSrc;
 const getValidImgSrc = imageDataUrlSanitizer;
 window.getValidImgSrc = getValidImgSrc;
 const normalizeImageSource = imageDataUrlSanitizer;
