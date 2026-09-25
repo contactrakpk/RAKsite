@@ -83,27 +83,38 @@ document.addEventListener('click', (event) => {
   }, 180);
 });
 
-const supabaseClient = typeof supabase !== 'undefined' ? supabase : (window.supabaseClient || null);
-const { createClient } = supabaseClient || {};
-
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 const SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
 const SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
-const _supabase = createClient && SUPABASE_URL && SUPABASE_ANON_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+const initializeSupabaseClient = () => {
+  if (window._supabase && typeof window._supabase.from === 'function') return window._supabase;
 
-if (_supabase) {
-  window._supabase = _supabase;
-} else {
-  window._supabase = window._supabase || null;
+  const supabaseLib = window.supabase || window.supabaseClient || null;
+  if (supabaseLib && typeof supabaseLib.createClient === 'function') {
+    window._supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  return window._supabase || null;
+};
+
+const _supabase = initializeSupabaseClient();
+window._supabase = _supabase;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeSupabaseClient, { once: true });
 }
 
 const fetchSupabaseProducts = async () => {
+  const client = initializeSupabaseClient();
+  if (!client || typeof client.from !== 'function') {
+    console.warn('[Supabase] client is not ready yet; using empty fallback.');
+    return [];
+  }
+
   try {
-    const { data, error } = await _supabase.from('products').select('*');
+    const { data, error } = await client.from('products').select('*');
     if (error) {
       console.warn('Supabase products fetch failed; using empty fallback.', error);
       return [];
@@ -209,13 +220,14 @@ if (cmsData?.products?.length) {
 }
 
 const runSupabaseSimpleQuery = async (table, select, filters = []) => {
-  if (!_supabase || typeof _supabase.from !== 'function') {
+  const client = initializeSupabaseClient();
+  if (!client || typeof client.from !== 'function') {
     console.warn('[Supabase] missing client; skipping query for table:', table);
     return { data: [], error: null };
   }
 
   try {
-    let query = _supabase.from(table).select(select);
+    let query = client.from(table).select(select);
     filters.forEach(({ field, op, value }) => {
       if (field && op && value !== undefined && typeof query[op] === 'function') {
         query = query[op](field, value);

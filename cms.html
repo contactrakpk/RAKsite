@@ -117,11 +117,18 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
-    const { createClient }=supabase;
     const SUPABASE_URL=window.RAK_SUPABASE_URL||'https://yhrxpmglucstpoyddkwy.supabase.co';
     const SUPABASE_ANON_KEY=window.RAK_SUPABASE_ANON_KEY||'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
-    const _supabase=window._supabase||createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    window._supabase=_supabase;
+    const ensureSupabaseClient = () => {
+      if (window._supabase && typeof window._supabase.from === 'function') return window._supabase;
+      const supabaseLib = window.supabase || window.supabaseClient || null;
+      if (supabaseLib && typeof supabaseLib.createClient === 'function') {
+        window._supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+      return window._supabase || null;
+    };
+    const _supabase = ensureSupabaseClient();
+    window._supabase = _supabase;
     console.info('CMS Supabase project:',new URL(SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
