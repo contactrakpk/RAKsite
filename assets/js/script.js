@@ -1032,12 +1032,14 @@ const renderCategoryPage = async () => {
           <div class="reviews-track category-review-track">
             ${categoryReviews.map((review) => `
               <article class="review-card">
-                <img src="${resolveReviewImage(review)}" alt="${review.product || 'Customer review'}" />
                 <div class="review-card-body">
-                  <div class="review-card-meta"><span class="review-stars">${'★'.repeat(review.rating)}</span><time>${formatReviewDate(review.date)}</time></div>
-                  <h3>${review.title}</h3>
+                  <div class="review-card-header">
+                    <img src="${resolveReviewImage(review)}" alt="" aria-hidden="true" />
+                    <div><h3>${review.author}</h3><span>${review.title || review.product || 'Customer review'}</span></div>
+                    <time>${formatReviewDate(review.date)}</time>
+                  </div>
                   <p>${review.text}</p>
-                  <div class="review-author"><strong>${review.author}</strong><span>${review.product || 'Customer review'}</span></div>
+                  <div class="review-card-footer"><span class="review-stars">${'★'.repeat(Number(review.rating || 0))}</span><span class="review-product">${review.product || ''}</span></div>
                 </div>
               </article>
             `).join('')}
@@ -1501,7 +1503,7 @@ const renderShopReviews = () => {
     <div class="reviews-carousel">
       <button type="button" class="review-nav review-nav-prev" aria-label="Previous reviews">‹</button>
       <div class="reviews-track" id="reviewsTrack">
-          ${validReviews.map((review) => `<article class="review-card"><img src="${resolveReviewImage(review)}" alt="${review.product || 'Customer review'}" /><div class="review-card-body"><div class="review-card-meta"><span class="review-stars">${'★'.repeat(Number(review.rating || 0))}</span><time>${formatReviewDate(review.date)}</time></div><h3>${review.title || 'Customer review'}</h3><p>${review.text}</p><div class="review-author"><strong>${review.author}</strong><span>${review.product || 'Customer review'}</span></div></div></article>`).join('')}
+          ${validReviews.map((review) => `<article class="review-card"><div class="review-card-body"><div class="review-card-header"><img src="${resolveReviewImage(review)}" alt="" aria-hidden="true" /><div><h3>${review.author}</h3><span>${review.title || review.product || 'Customer review'}</span></div><time>${formatReviewDate(review.date)}</time></div><p>${review.text}</p><div class="review-card-footer"><span class="review-stars">${'★'.repeat(Number(review.rating || 0))}</span><span class="review-product">${review.product || ''}</span></div></div></article>`).join('')}
       </div>
       <button type="button" class="review-nav review-nav-next" aria-label="Next reviews">›</button>
     </div>
