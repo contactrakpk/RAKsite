@@ -906,7 +906,7 @@ const renderVideoShowcase = async () => {
   }
   container.innerHTML = renderedVideoProducts.map((product) => `
     <article class="video-product-card" data-product-id="${product.id}" tabindex="0" role="link" aria-label="View ${product.name} details">
-      <video autoplay muted loop playsinline preload="metadata" poster="${resolveProductImage(product.poster)}">
+      <video autoplay muted loop playsinline preload="metadata" crossorigin="anonymous" poster="${resolveProductImage(product.poster)}">
         ${product.video ? `<source src="${resolveProductImage(product.video)}" />` : ''}
       </video>
       <div class="video-product-info">
@@ -918,6 +918,10 @@ const renderVideoShowcase = async () => {
       </div>
     </article>
   `).join('');
+
+  container.querySelectorAll('video').forEach((videoElement) => {
+    videoElement.onerror = () => { videoElement.removeAttribute('preload'); };
+  });
 
   container.querySelectorAll('.video-product-card').forEach((card) => {
     const openDetails = () => {
@@ -970,7 +974,7 @@ const renderCategoryPage = async () => {
             const linked = products.find((product) => product.name === video.product);
             return `
             <article class="video-product-card">
-              <video autoplay muted loop playsinline preload="metadata" poster="../${categoryPoster}">
+              <video autoplay muted loop playsinline preload="metadata" crossorigin="anonymous" poster="../${categoryPoster}">
                 ${video.video ? `<source src="${video.video}" type="video/mp4" />` : ''}
               </video>
               <div class="video-product-info">
@@ -986,6 +990,9 @@ const renderCategoryPage = async () => {
         </div>
       </section>
     `;
+    videoContainer.querySelectorAll('video').forEach((videoElement) => {
+      videoElement.onerror = () => { videoElement.removeAttribute('preload'); };
+    });
     videoContainer.querySelectorAll('.video-product-card').forEach((card, index) => {
       const video = categoryVideos[index];
       const linked = products.find((product) => product.name === video.product);

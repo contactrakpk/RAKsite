@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925rlsfix"></script>
+  <script src="assets/js/script.js?v=20260925videocachefix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -585,6 +585,17 @@
       }
     })();
     })();
+  </script>
+  <script>
+    const configureCmsVideos = (root = document) => {
+      root.querySelectorAll('video').forEach((videoElement) => {
+        videoElement.setAttribute('crossorigin', 'anonymous');
+        videoElement.setAttribute('preload', 'metadata');
+        videoElement.onerror = () => { videoElement.removeAttribute('preload'); };
+      });
+    };
+    configureCmsVideos();
+    new MutationObserver(() => configureCmsVideos()).observe(document.body, { childList: true, subtree: true });
   </script>
 </body>
 </html>
