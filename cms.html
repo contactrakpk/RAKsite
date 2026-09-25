@@ -113,12 +113,14 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsroutefix"></script>
+  <script src="assets/js/script.js?v=20260925cmsfix2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
-    const SUPABASE_URL=window.RAK_SUPABASE_URL||'https://yhrxpmglucstpoyddkwy.supabase.co';
-    const SUPABASE_ANON_KEY=window.RAK_SUPABASE_ANON_KEY||'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+    window.SUPABASE_URL = window.SUPABASE_URL || window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
+    window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+    var SUPABASE_URL = window.SUPABASE_URL;
+    var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
     const ensureSupabaseClient = () => {
       if (window._supabase && typeof window._supabase.from === 'function') return window._supabase;
       const supabaseLib = window.supabase || window.supabaseClient || null;
