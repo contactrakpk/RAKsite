@@ -741,6 +741,23 @@ const renderWhatsAppButton = () => {
 })();
 
 const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22600%22 height=%22600%22 viewBox=%220 0 600 600%22%3E%3Crect width=%22600%22 height=%22600%22 fill=%22%23f1f3f5%22%2F%3E%3Ctext x=%22300%22 y=%22310%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%236b7280%22%3EImage Not Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+const sanitizeDatabaseImage = (str) => {
+  if (!str || typeof str !== 'string') return '';
+  const cleaned = str.split(':1')[0].split('?')[0].trim();
+  const jpegMarker = cleaned.indexOf('/9j/');
+  const pngMarker = cleaned.indexOf('iVBORw0');
+  const gifMarker = cleaned.indexOf('R0lGOd');
+  let startIndex = -1;
+  let mimeType = 'jpeg';
+  if (jpegMarker !== -1) { startIndex = jpegMarker; mimeType = 'jpeg'; }
+  else if (pngMarker !== -1) { startIndex = pngMarker; mimeType = 'png'; }
+  else if (gifMarker !== -1) { startIndex = gifMarker; mimeType = 'gif'; }
+  if (startIndex !== -1) return `data:image/${mimeType};base64,${cleaned.substring(startIndex)}`;
+  if (cleaned.startsWith('data:image/')) return cleaned.replace('base64.', 'base64,');
+  if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) return cleaned;
+  return '';
+};
+window.sanitizeDatabaseImage = sanitizeDatabaseImage;
 const fixImageSrc = (src) => {
   if (!src || typeof src !== 'string') return '';
   const value = src.trim();

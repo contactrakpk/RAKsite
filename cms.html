@@ -119,7 +119,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925base64commafix"></script>
+  <script src="assets/js/script.js?v=20260925dbcleaner"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -484,7 +484,8 @@
     const cmsImageFallback='data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22600%22 height=%22600%22 viewBox=%220 0 600 600%22%3E%3Crect width=%22600%22 height=%22600%22 fill=%22%23f1f3f5%22%2F%3E%3Ctext x=%22300%22 y=%22310%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%236b7280%22%3EImage Not Found%3C%2Ftext%3E%3C%2Fsvg%3E';
     const cleanImageDataUrl=(value)=>{let res=String(value??'').replace(/[\r\n\s]+/g,'');if(!res)return cmsImageFallback;const embeddedDataStart=res.search(/data:image\/\w+;base64,/i);if(embeddedDataStart>0)res=res.slice(embeddedDataStart);const rawBase64Start=res.search(/(?:^|\/)9j\//i);if(rawBase64Start>0&&(/^https?:|^\//i.test(res)))res=res.slice(rawBase64Start+(res[rawBase64Start]==='/'?1:0));if(/^data:image\/\w+;base64,?$/i.test(res)||/^data:image\/svg\+xml/i.test(res))return cmsImageFallback;const prefixes=/^(data:image\/\w+;base64,)+/i;const match=res.match(prefixes);if(match){const mime=match[0].match(/data:image\/(\w+);base64,/i)?.[1]||'jpeg';const payload=res.replace(prefixes,'');return payload?`data:image/${mime.toLowerCase()};base64,${payload}`:cmsImageFallback;}if(/^data:image\//i.test(res)||/^https?:|^blob:|^\//i.test(res)||/^(?:\.\.\/|\.\/)?assets\//i.test(res))return res;if(/^[A-Za-z0-9+/_=-]+$/.test(res))return `data:image/jpeg;base64,${res}`;return cmsImageFallback;};
     const isValidCmsImage=(value)=>{const image=cleanImageDataUrl(value);return image!==cmsImageFallback&&(/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(image)||/^(?:https?:|blob:|\/|\.\.\/|\.\/)?assets\//i.test(image));};
-    const sanitizeBase64=(src)=>window.sanitizeBase64?window.sanitizeBase64(src):cleanImageDataUrl(src);
+    const sanitizeDatabaseImage=(src)=>window.sanitizeDatabaseImage?window.sanitizeDatabaseImage(src):'';
+    const sanitizeBase64=(src)=>sanitizeDatabaseImage(src)||((window.sanitizeBase64?window.sanitizeBase64(src):cleanImageDataUrl(src))||'');
     const formatImageSrc=(imgStr)=>sanitizeBase64(window.formatImageSrc?window.formatImageSrc(imgStr):imgStr);
     const getValidImgSrc=(imgStr)=>formatImageSrc(imgStr);
     const normalizeCmsImageSource=cleanImageDataUrl;
@@ -641,7 +642,20 @@
       });
     };
     configureCmsVideos();
-    new MutationObserver(() => configureCmsVideos()).observe(document.body, { childList: true, subtree: true });
+    const sanitizeCmsImageElements = (root = document) => {
+      root.querySelectorAll('img').forEach((imageElement) => {
+        const original = imageElement.getAttribute('src') || '';
+        const formatted = window.sanitizeDatabaseImage?.(original) || window.formatImageSrc?.(original) || original;
+        if (formatted && formatted !== original) imageElement.setAttribute('src', formatted);
+      });
+    };
+    sanitizeCmsImageElements();
+    new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) sanitizeCmsImageElements(node);
+      }));
+      configureCmsVideos();
+    }).observe(document.body, { childList: true, subtree: true });
   </script>
 </body>
 </html>
