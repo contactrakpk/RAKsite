@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsauthfix"></script>
+  <script src="assets/js/script.js?v=20260925reviewsfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -129,6 +129,9 @@
       }
 
       window._supabase = window.supabase || window._supabase || null;
+      function getCmsSupabase() {
+        return window.supabase || window._supabase || window.supabaseClient || (window.supabaseLib ? window.supabaseLib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      }
       function getSupabaseClient() {
         if (window.supabaseClient) return window.supabaseClient;
         if (window.supabase && typeof window.supabase.auth === 'object') return window.supabase;
@@ -206,67 +209,81 @@
     localStorage.setItem('rak-cms-data',JSON.stringify(data));
     const isUuid=value=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||''));
     const persistProduct=async product=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),status:'published'};
-      const query=isUuid(product.id)?_supabase.from('products').update(payload).eq('id',product.id).select('id'):_supabase.from('products').insert(payload).select('id');
+      const query=isUuid(product.id)?client.from('products').update(payload).eq('id',product.id).select('id'):client.from('products').insert(payload).select('id');
       const {data:storedRows,error}=await query;
       if(error)throw error;
       const stored=storedRows?.[0];
       if(!stored?.id)throw new Error('Supabase did not return the saved product.');
       product.id=stored.id;
-      const imageDelete=await _supabase.from('product_images').delete().eq('product_id',product.id); if(imageDelete.error)throw imageDelete.error;
+      const imageDelete=await client.from('product_images').delete().eq('product_id',product.id); if(imageDelete.error)throw imageDelete.error;
       const images=(product.images||[]).filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,image_url,sort_order}));
-      if(images.length){const {error}=await _supabase.from('product_images').insert(images);if(error)throw error;}
-      const variationDelete=await _supabase.from('product_variations').delete().eq('product_id',product.id); if(variationDelete.error)throw variationDelete.error;
+      if(images.length){const {error}=await client.from('product_images').insert(images);if(error)throw error;}
+      const variationDelete=await client.from('product_variations').delete().eq('product_id',product.id); if(variationDelete.error)throw variationDelete.error;
       const variations=(product.variations||[]).map((variation,sort_order)=>({product_id:product.id,name:String(typeof variation==='string'?variation:variation.name||'Default'),price:Number(typeof variation==='string'?product.price:variation.price)||0,sort_order}));
-      if(variations.length){const {error}=await _supabase.from('product_variations').insert(variations);if(error)throw error;}
-      const variationImageDelete=await _supabase.from('product_variation_images').delete().eq('product_id',product.id); if(variationImageDelete.error)throw variationImageDelete.error;
+      if(variations.length){const {error}=await client.from('product_variations').insert(variations);if(error)throw error;}
+      const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id); if(variationImageDelete.error)throw variationImageDelete.error;
       const variationImages=(product.variations||[]).flatMap((variation)=>{
         const variationName=String(typeof variation==='string'?variation:variation.name||'Default');
         const imageList=Array.isArray(typeof variation==='string'?[]:variation.images)?(typeof variation==='string'?[]:variation.images):[];
         return imageList.filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,variation_name:variationName,image_url,sort_order}));
       });
-      if(variationImages.length){const {error}=await _supabase.from('product_variation_images').insert(variationImages);if(error)throw error;}
+      if(variationImages.length){const {error}=await client.from('product_variation_images').insert(variationImages);if(error)throw error;}
     };
     const persistReview=async review=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       let productId=null;
-      if(review.product){const {data:product,error}=await _supabase.from('products').select('id').eq('name',String(review.product).trim()).limit(1).maybeSingle();if(error)throw error;productId=product?.id||null;}
+      if(review.product){const {data:product,error}=await client.from('products').select('id').eq('name',String(review.product).trim()).limit(1).maybeSingle();if(error)throw error;productId=product?.id||null;}
       const payload={product_id:productId,title:String(review.title||''),body:String(review.text||''),author:String(review.author||''),rating:Number(review.rating)||5,review_date:review.date,image_url:String(review.image||''),status:'published'};
-      const query=isUuid(review.id)?_supabase.from('reviews').update(payload).eq('id',review.id).select('id'):_supabase.from('reviews').insert(payload).select('id');
+      const query=isUuid(review.id)?client.from('reviews').update(payload).eq('id',review.id).select('id'):client.from('reviews').insert(payload).select('id');
       const {data:storedRows,error}=await query;
       if(error)throw error;
       const stored=storedRows?.[0];
       if(stored?.id)review.id=stored.id;
     };
      const persistPage=async(name,page)=>{
+       const client=getCmsSupabase();
+       if(!client)throw new Error('Supabase client unavailable');
        const payload={slug:name.toLowerCase(),name,hero_url:String(page.hero||''),banner_url:String(page.banner||'')};
-       const {error}=await _supabase.from('pages').upsert(payload,{onConflict:'slug'});
+       const {error}=await client.from('pages').upsert(payload,{onConflict:'slug'});
        if(error)throw error;
      };
      const deleteReviewFromSupabase=async(review)=>{
+       const client=getCmsSupabase();
+       if(!client)throw new Error('Supabase client unavailable');
        if(!isUuid(review.id))return;
-       const {error}=await _supabase.from('reviews').delete().eq('id',review.id);
+       const {error}=await client.from('reviews').delete().eq('id',review.id);
        if(error)throw error;
      };
     const persistSettings=async()=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       const settings=[{key:'announcement',value:String(data.announcement||'')},{key:'shipping_cost',value:String(Number(data.shipping)||0)}];
-      const {error}=await _supabase.from('settings').upsert(settings,{onConflict:'key'});
+      const {error}=await client.from('settings').upsert(settings,{onConflict:'key'});
       if(error)throw error;
     };
     const removeVideoFromSupabase=async(video,type)=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       const pageSlug=type==='shop'?'shop':String(video.category||'').toLowerCase();
-      let query=_supabase.from('videos').delete().eq('page_slug',pageSlug);
+      let query=client.from('videos').delete().eq('page_slug',pageSlug);
       if(isUuid(video.id)) query=query.eq('id',video.id);
-      else if(video.product){const {data:product,error}=await _supabase.from('products').select('id').eq('name',String(video.product).trim()).limit(1).maybeSingle();if(error)throw error;if(product?.id)query=query.eq('product_id',product.id);else query=query.eq('title',String(video.title||''));}
+      else if(video.product){const {data:product,error}=await client.from('products').select('id').eq('name',String(video.product).trim()).limit(1).maybeSingle();if(error)throw error;if(product?.id)query=query.eq('product_id',product.id);else query=query.eq('title',String(video.title||''));}
       else query=query.eq('title',String(video.title||''));
       const {error}=await query;if(error)throw error;
     };
     const persistVideo=async(video,type)=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       if(!video.video||video.video.startsWith('idb://'))throw new Error('Use a permanent video URL before saving.');
       const pageSlug=type==='shop'?'shop':String(video.category||'').trim().toLowerCase();
       if(!pageSlug)throw new Error('Video page is missing.');
       const productName=String(video.product||'').trim();
       if(!productName)throw new Error('Select a linked product before saving.');
-      const {data:product,error:productError}=await _supabase.from('products').select('id').eq('name',productName).eq('status','published').limit(1).maybeSingle();
+      const {data:product,error:productError}=await client.from('products').select('id').eq('name',productName).eq('status','published').limit(1).maybeSingle();
       if(productError){console.error('Video product lookup failed:',productError);throw productError;}
       if(!product?.id)throw new Error(`Linked product not found: ${productName}`);
       const payload={
@@ -282,7 +299,7 @@
       if (isUpdate) {
         payload.id = video.id;
       }
-      const { data, error } = await _supabase.from('videos').upsert([payload]).select();
+      const { data, error } = await client.from('videos').upsert([payload]).select();
       
       if(error){
         console.error('Supabase error:',JSON.stringify(error));
@@ -293,13 +310,15 @@
       return true;
     };
     const uploadVideoToStorage=async(file)=>{
+      const client=getCmsSupabase();
+      if(!client)throw new Error('Supabase client unavailable');
       if(!(file instanceof File)||!file.size)throw new Error('Choose a video file first.');
       const extension=(file.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
       const filePath=`cms/${crypto.randomUUID()}.${extension}`;
       console.debug('Uploading video to Supabase Storage:',{bucket:'videos',filePath,fileName:file.name,fileType:file.type,fileSize:file.size});
-      const {error:uploadError}=await _supabase.storage.from('videos').upload(filePath,file,{contentType:file.type||'video/mp4',upsert:false});
+      const {error:uploadError}=await client.storage.from('videos').upload(filePath,file,{contentType:file.type||'video/mp4',upsert:false});
       if(uploadError){console.error('Supabase video upload failed:',uploadError);throw new Error(`Storage upload failed: ${uploadError.message}. Check the videos bucket and authenticated upload policy.`);}
-      const {data}= _supabase.storage.from('videos').getPublicUrl(filePath);
+      const {data}= client.storage.from('videos').getPublicUrl(filePath);
       if(!data?.publicUrl)throw new Error('Storage upload succeeded but no public URL was returned.');
       console.info('Video uploaded to Supabase Storage:',data.publicUrl);
       return data.publicUrl;
@@ -309,26 +328,34 @@
     const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     function renderOverview(){ $('#statProducts').textContent=data.products.length;$('#statReviews').textContent=data.reviews.length;$('#statShipping').textContent=Number(data.shipping).toLocaleString();$('#statMedia').textContent=Object.values(data.pages).length*2+data.shopVideos.length+data.categoryVideos.length;$('#recentProducts').innerHTML=(data.products.length?data.products.slice(-5).reverse():[]).map(product=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(product.images?.[0]||'')}" alt=""><b>${esc(product.name)}</b></div></td><td>${esc(product.category)}</td><td>PKR ${Number(product.price).toLocaleString()}</td><td><span class="badge">Published</span></td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">No products yet. Add your first product.</div></td></tr>' }
     async function safeSupabaseOrderQuery(table, select, fallbackColumns = ['created_at', 'id']) {
+      const client = getCmsSupabase();
+      if (!client) return { data: null, error: new Error('Supabase client unavailable') };
       for (const column of fallbackColumns) {
         try {
-          const { data, error } = await _supabase.from(table).select(select).order(column, { ascending: false });
+          const { data, error } = await client.from(table).select(select).order(column, { ascending: false });
           if (error) {
             console.warn(`[Supabase] ${table} sort by ${column} failed.`, error);
             continue;
           }
-          return Array.isArray(data) ? data : [];
+          return { data: Array.isArray(data) ? data : [], error: null };
         } catch (error) {
           console.warn(`[Supabase] ${table} sort by ${column} crashed.`, error);
         }
       }
       console.warn(`[Supabase] ${table} could not be ordered safely; using empty fallback.`);
-      return [];
+      return { data: [], error: new Error('Supabase query unavailable') };
+    }
+    async function deleteCmsOrder(id) {
+      const client=getCmsSupabase();
+      if(!client)return {error:new Error('Supabase client unavailable')};
+      return client.from('orders').delete().eq('id',id);
     }
     async function getOrders(){
-      const remoteOrders = await safeSupabaseOrderQuery('orders', '*', ['created_at', 'id']);
-      if (!remoteOrders.length && !remoteOrders) {
+      const result = await safeSupabaseOrderQuery('orders', '*', ['created_at', 'id']);
+      if (result.error) {
         return [];
       }
+      const remoteOrders = result.data;
       return remoteOrders.map(order=>({
         databaseId:order.id,
         id:order.order_number,
@@ -345,7 +372,9 @@
       const product=data.products[index];
       if(!product) return;
       if(isUuid(product.id)){
-        const {error}=await _supabase.from('products').delete().eq('id',product.id);
+        const client=getCmsSupabase();
+        if(!client){showToast('Supabase client unavailable');return;}
+        const {error}=await client.from('products').delete().eq('id',product.id);
         if(error){console.error(error);showToast(`Could not delete from Supabase: ${error.message||'check permissions'}`);return;}
       }
       data.products.splice(index,1);
@@ -478,7 +507,7 @@
 
       try {
         const reviewResult = await safeSupabaseOrderQuery('reviews', '*, products(name)', ['review_date', 'created_at', 'date', 'id']);
-        reviews = Array.isArray(reviewResult) ? reviewResult : [];
+        reviews = reviewResult.error ? [] : reviewResult.data;
       } catch (error) {
         console.warn('Supabase reviews fetch failed; leaving local CMS data intact.', error);
         reviews = [];
@@ -490,13 +519,13 @@
       localStorage.setItem('rak-cms-data',JSON.stringify(data));
       return data;
     }
-    $('#accountForm').onsubmit=async e=>{e.preventDefault();const status=$('#accountStatus');status.textContent='Updating...';try{const email=$('#accountEmail').value.trim();const password=$('#accountPassword').value;const updates={};if(email)updates.email=email;if(password)updates.password=password;const {error}=await _supabase.auth.updateUser(updates);if(error)throw error;status.textContent='Credentials updated';$('#accountPassword').value='';}catch(error){status.textContent=error.message||'Could not update credentials'}};
+    $('#accountForm').onsubmit=async e=>{e.preventDefault();const status=$('#accountStatus');status.textContent='Updating...';try{const client=getCmsSupabase();if(!client?.auth)throw new Error('Supabase client unavailable');const email=$('#accountEmail').value.trim();const password=$('#accountPassword').value;const updates={};if(email)updates.email=email;if(password)updates.password=password;const {error}=await client.auth.updateUser(updates);if(error)throw error;status.textContent='Credentials updated';$('#accountPassword').value='';}catch(error){status.textContent=error.message||'Could not update credentials'}};
     (async()=>{
       const isValid=await verifyAdminSession();
       if(isValid){
         renderAll();
         loadRemoteCmsData().then(renderAll).catch(error=>console.warn('Could not refresh CMS content',error));
-        try { const {data:authData}=await _supabase.auth.getUser(); if(authData.user?.email)$('#accountEmail').value=authData.user.email; }catch(error){ console.warn('Could not load admin email',error); }
+        try { const client=getCmsSupabase();if(!client?.auth)throw new Error('Supabase client unavailable');const {data:authData}=await client.auth.getUser(); if(authData.user?.email)$('#accountEmail').value=authData.user.email; }catch(error){ console.warn('Could not load admin email',error); }
       }
     })();
     })();
