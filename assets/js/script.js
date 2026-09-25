@@ -919,6 +919,13 @@ const renderTrendingProducts = () => {
   });
 };
 
+const configureVideoPreview = (videoElement) => {
+  videoElement.setAttribute('preload', 'metadata');
+  videoElement.setAttribute('crossorigin', 'anonymous');
+  videoElement.onerror = () => videoElement.setAttribute('data-media-error', 'true');
+  return videoElement;
+};
+
 const renderVideoShowcase = async () => {
   const container = document.getElementById('videoShowcaseGrid');
   if (!container) return;
@@ -946,9 +953,7 @@ const renderVideoShowcase = async () => {
     </article>
   `).join('');
 
-  container.querySelectorAll('video').forEach((videoElement) => {
-    videoElement.onerror = () => { videoElement.removeAttribute('preload'); };
-  });
+  container.querySelectorAll('video').forEach(configureVideoPreview);
 
   container.querySelectorAll('.video-product-card').forEach((card) => {
     const openDetails = () => {
@@ -1017,9 +1022,7 @@ const renderCategoryPage = async () => {
         </div>
       </section>
     `;
-    videoContainer.querySelectorAll('video').forEach((videoElement) => {
-      videoElement.onerror = () => { videoElement.removeAttribute('preload'); };
-    });
+    videoContainer.querySelectorAll('video').forEach(configureVideoPreview);
     videoContainer.querySelectorAll('.video-product-card').forEach((card, index) => {
       const video = categoryVideos[index];
       const linked = products.find((product) => product.name === video.product);
