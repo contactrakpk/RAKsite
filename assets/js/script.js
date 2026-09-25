@@ -1525,7 +1525,52 @@ const renderShopReviews = () => {
 const getQueryParam = (key) => new URLSearchParams(window.location.search).get(key);
 const getProductQueryValue = () => getQueryParam('productId') || getQueryParam('id') || getQueryParam('slug');
 
-const renderDetailPage = () => {
+window.variationImagesMap = window.variationImagesMap || {};
+
+const fetchDetailVariationData = async (productId) => {
+  const client = initializeSupabaseClient();
+  if (!client || !productId) return null;
+
+  try {
+    const { data: variationRows, error: variationError } = await client
+      .from('product_variations')
+      .select('*')
+      .eq('product_id', productId)
+      .order('sort_order', { ascending: true });
+    if (variationError) throw variationError;
+
+    const variations = Array.isArray(variationRows) ? variationRows : [];
+    const variationIds = variations.map((variation) => variation.id).filter(Boolean);
+    let imageQuery = client.from('product_variation_images').select('*').eq('product_id', productId);
+    if (variationIds.length && typeof imageQuery.in === 'function') {
+      imageQuery = imageQuery.in('variation_id', variationIds);
+    }
+    const { data: imageRows, error: imageError } = await imageQuery;
+    if (imageError) throw imageError;
+
+    const imageMap = {};
+    (Array.isArray(imageRows) ? imageRows : []).forEach((image) => {
+      const variationId = String(image.variation_id || '');
+      const imageUrl = image.image_url || image.url || image.src || image.image || '';
+      if (!variationId || !imageUrl) return;
+      if (!imageMap[variationId]) imageMap[variationId] = [];
+      if (!imageMap[variationId].includes(imageUrl)) imageMap[variationId].push(imageUrl);
+    });
+    window.variationImagesMap = { ...window.variationImagesMap, ...imageMap };
+
+    return variations.map((variation) => ({
+      ...variation,
+      name: variation.name || 'Default',
+      price: Number(variation.price) || 0,
+      images: imageMap[String(variation.id)] || []
+    }));
+  } catch (error) {
+    console.warn('Direct Supabase variation gallery query failed; using product fallback images.', error);
+    return null;
+  }
+};
+
+const renderDetailPage = async () => {
   const productId = getProductQueryValue();
   if (!productId) return;
   const product = products.find((item) => sameProductId(item.id, productId) || String(item.slug || '').toLowerCase() === String(productId).toLowerCase() || String(item.name || '').toLowerCase() === String(productId).toLowerCase());
@@ -1568,7 +1613,8 @@ const renderDetailPage = () => {
   };
   nameEl.textContent = product.name;
   typeEl.textContent = product.type;
-  const variations = (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price, images: product.images || [] }]).map((variation) =>
+  const directVariations = await fetchDetailVariationData(product.id);
+  const variations = (directVariations?.length ? directVariations : (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price, images: product.images || [] }])).map((variation) =>
     typeof variation === 'string' ? { name: variation, price: product.price, images: product.images || [] } : variation
   );
   const serializeVariationImages = (images) => JSON.stringify(Array.isArray(images) ? images : [])
@@ -1587,14 +1633,22 @@ const renderDetailPage = () => {
   qtyEl.textContent = '1';
 
   variationsEl.innerHTML = variations.map((variation, index) => `
-    <button type="button" class="variation-pill${index === 0 ? ' active' : ''}" data-variation-index="${index}" data-images="${serializeVariationImages(variation.images)}">
+    <button type="button" class="variation-pill${index === 0 ? ' active' : ''}" data-variation-index="${index}" data-variation-id="${variation.id || variation.variation_id || ''}" data-images="${serializeVariationImages(variation.images)}">
       <span>${variation.name}</span><small>PKR ${Number(variation.price).toLocaleString()}</small>
     </button>
   `).join('');
-  variationsEl.addEventListener('click', (event) => {
+  variationsEl.onclick = (event) => {
     const button = event.target.closest('[data-variation-index]');
     if (!button) return;
-    const selectedImages = JSON.parse(button.dataset.images || '[]');
+    const variationId = button.dataset.variationId || '';
+    const mappedImages = window.variationImagesMap?.[variationId] || [];
+    let attributeImages = [];
+    try {
+      attributeImages = JSON.parse(button.dataset.images || '[]');
+    } catch (error) {
+      console.warn('Could not parse variation image attribute; using fallback images.', error);
+    }
+    const selectedImages = mappedImages.length ? mappedImages : attributeImages;
     selectedVariation = { ...variations[Number(button.dataset.variationIndex)], images: selectedImages };
     galleryImages = getVariationGallery(selectedVariation);
     variationsEl.querySelectorAll('.variation-pill').forEach((pill) => pill.classList.toggle('active', pill === button));
@@ -1603,7 +1657,7 @@ const renderDetailPage = () => {
     mainImage.src = primary;
     mainImage.alt = `${product.name} - ${selectedVariation.name}`;
     renderThumbnails();
-  });
+  };
   const renderThumbnails = () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
     thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
