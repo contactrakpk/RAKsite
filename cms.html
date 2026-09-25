@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925variationgalleryfix"></script>
+  <script src="assets/js/script.js?v=20260925timeout15sfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -363,7 +363,7 @@
       console.info('Video uploaded to Supabase Storage:',data.publicUrl);
       return data.publicUrl;
     };
-    const withCmsTimeout=(promise,ms=3000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Save timed out after 3 seconds')),ms))]);
+    const withCmsTimeout=(promise,ms=15000)=>{let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Save timed out after 15 seconds')),ms)});return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer))};
     const save=async()=>{try{await withCmsTimeout((async()=>{for(const product of data.products)await persistProduct(product);for(const review of data.reviews)await persistReview(review);for(const [name,page] of Object.entries(data.pages))await persistPage(name,page);})());localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Saved successfully!');return true}catch(error){console.error(error);showToast(`Could not save: ${error.message||'check permissions'}`);return false}};
     const showToast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
     const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
