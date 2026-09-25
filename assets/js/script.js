@@ -87,6 +87,10 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 const SUPABASE_URL = window.RAK_SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
 const SUPABASE_ANON_KEY = window.RAK_SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+const isCmsRoute = () => {
+  const pathname = window.location.pathname || '';
+  return pathname.includes('/cms') || pathname.endsWith('/cms') || pathname.endsWith('/cms.html');
+};
 
 const initializeSupabaseClient = () => {
   if (window._supabase && typeof window._supabase.from === 'function') return window._supabase;
@@ -478,6 +482,7 @@ const loadSupabaseContent = async () => {
 };
 
 const loadRemoteContent = async () => {
+  if (isCmsRoute()) return false;
   if (!API_URL) return false;
   try {
     const controller = new AbortController();
@@ -1689,6 +1694,7 @@ const renderDetailPage = () => {
 };
 
 const init = async () => {
+  if (isCmsRoute()) return;
   showPageLoader();
 
   try {
@@ -1759,10 +1765,13 @@ const init = async () => {
 };
 
 window.addEventListener('storage', (event) => {
+  if (isCmsRoute()) return;
   if (event.key === 'rak-cms-data' && !window.location.pathname.endsWith('/cms.html')) {
     window.location.reload();
   }
 });
 
-init();
+if (!isCmsRoute()) {
+  init();
+}
 
