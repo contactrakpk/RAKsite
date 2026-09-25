@@ -725,19 +725,30 @@ const renderWhatsAppButton = () => {
 })();
 
 const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22600%22 height=%22600%22 viewBox=%220 0 600 600%22%3E%3Crect width=%22600%22 height=%22600%22 fill=%22%23f1f3f5%22%2F%3E%3Ctext x=%22300%22 y=%22310%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%236b7280%22%3EImage Not Found%3C%2Ftext%3E%3C%2Fsvg%3E';
-const normalizeImageSource = (source) => {
-  const value = String(source || '').trim().replace(/^(data:image\/(?:png|jpg|jpeg|webp);base64):/i, '$1,');
-  if (/^data:image\//i.test(value) || /^https?:|^blob:|^\//i.test(value)) return value;
-  if (value && /^[A-Za-z0-9+/_=-]+$/.test(value)) return `data:image/jpeg;base64,${value}`;
-  return value;
+const imageDataUrlSanitizer = (source) => {
+  let value = String(source ?? '').replace(/[\r\n\s]+/g, '');
+  if (!value) return imageFallbackUrl;
+  const prefixPattern = /^(data:image\/\w+;base64,)+/i;
+  const prefixMatch = value.match(prefixPattern);
+  if (prefixMatch) {
+    const mime = prefixMatch[0].match(/data:image\/(\w+);base64,/i)?.[1] || 'jpeg';
+    value = `data:image/${mime.toLowerCase()};base64,${value.replace(prefixPattern, '')}`;
+    return value.includes(',') && value.slice(value.indexOf(',') + 1) ? value : imageFallbackUrl;
+  }
+  if (/^data:image\//i.test(value)) return value;
+  if (/^https?:|^blob:|^\//i.test(value) || /^(?:\.\.\/|\.\/)?assets\//i.test(value)) return value;
+  if (/^[A-Za-z0-9+/_=-]+$/.test(value)) return `data:image/jpeg;base64,${value}`;
+  return imageFallbackUrl;
 };
+window.cleanImageDataUrl = imageDataUrlSanitizer;
+const normalizeImageSource = imageDataUrlSanitizer;
 const isValidImageSource = (source) => {
   const normalized = normalizeImageSource(source);
-  return Boolean(normalized);
+  return Boolean(normalized) && normalized !== imageFallbackUrl;
 };
 const resolveProductImage = (source) => {
-  const normalized = normalizeImageSource(source);
-  if (!isValidImageSource(normalized)) return '';
+  const normalized = imageDataUrlSanitizer(source);
+  if (normalized === imageFallbackUrl) return normalized;
   if (/^(data:|blob:|https?:|\/)/i.test(normalized)) return normalized;
   return `${window.location.pathname.includes('/pages/') ? '../' : ''}${normalized}`;
 };
@@ -1631,7 +1642,7 @@ const renderDetailPage = async () => {
     galleryFallbackImages[index] || galleryFallbackImages[0]
   );
 
-  mainImage.src = galleryImages[0];
+  mainImage.src = imageDataUrlSanitizer(galleryImages[0]);
   mainImage.alt = product.name;
   mainImage.onerror = () => {
     mainImage.onerror = null;
@@ -1664,7 +1675,7 @@ const renderDetailPage = async () => {
   };
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
-  mainImage.src = galleryImages[0] || fallbackImage;
+  mainImage.src = imageDataUrlSanitizer(galleryImages[0] || fallbackImage);
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
   const fullDescription = product.fullDescription || product.description || '';
   const shortDescription = product.short_description || product.shortDescription || product.description || '';
@@ -1704,7 +1715,7 @@ const renderDetailPage = async () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
     thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
     <button type="button" class="detail-thumb" data-image-index="${index + 1}">
-      <img class="product-thumbnail" src="${src}" data-full-src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
+      <img class="product-thumbnail" src="${imageDataUrlSanitizer(src)}" data-full-src="${imageDataUrlSanitizer(src)}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
     `).join('');
     thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {
@@ -1712,7 +1723,7 @@ const renderDetailPage = async () => {
         const currentMainImage = document.getElementById('main-product-image');
         if (currentMainImage) {
           currentMainImage.style.opacity = '0.55';
-          currentMainImage.src = this.dataset.fullSrc || this.src;
+          currentMainImage.src = imageDataUrlSanitizer(this.dataset.fullSrc || this.src);
           currentMainImage.addEventListener('load', () => { currentMainImage.style.opacity = '1'; }, { once: true });
         }
         thumbs.querySelectorAll('.product-thumbnail').forEach((thumb) => {
