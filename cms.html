@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925clientfromfix"></script>
+  <script src="assets/js/script.js?v=20260925cmssingleton"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -121,40 +121,28 @@
       window.SUPABASE_URL = window.SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
       window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
 
-      if (!window.supabase) {
-        const lib = window.supabase || window.supabaseClient || null;
-        if (lib && typeof lib.createClient === 'function') {
-          window.supabase = lib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-        }
-      }
-
       window._supabase = window.supabase || window._supabase || null;
       function getCmsSupabase() {
-        if (window._supabaseInstance && typeof window._supabaseInstance.from === 'function') {
-          return window._supabaseInstance;
+        if (window._globalSupabaseInstance && typeof window._globalSupabaseInstance.from === 'function') {
+          return window._globalSupabaseInstance;
         }
         if (window.supabase && typeof window.supabase.from === 'function') {
+          window._globalSupabaseInstance = window.supabase;
           return window.supabase;
         }
 
         const url = window.SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
         const key = window.SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
-        const lib = window.supabase || window.supabaseClient || window.supabaseLib || null;
+        const lib = window.supabase || window.supabaseClient || null;
         if (lib && typeof lib.createClient === 'function') {
-          window._supabaseInstance = lib.createClient(url, key);
-          return window._supabaseInstance;
+          window._globalSupabaseInstance = lib.createClient(url, key);
+          window.supabase = window._globalSupabaseInstance;
+          return window._globalSupabaseInstance;
         }
         return null;
       }
       function getSupabaseClient() {
-        if (window.supabaseClient) return window.supabaseClient;
-        if (window.supabase && typeof window.supabase.auth === 'object') return window.supabase;
-        const lib = window.supabase || window.supabaseClient || null;
-        if (lib && typeof lib.createClient === 'function') {
-          window.supabaseClient = lib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-          return window.supabaseClient;
-        }
-        return null;
+        return getCmsSupabase();
       }
       console.info('CMS Supabase project:',new URL(window.SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
