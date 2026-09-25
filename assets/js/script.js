@@ -496,6 +496,8 @@ const loadSupabaseContent = async () => {
 };
 
 const loadRemoteContent = async () => {
+  return false;
+  /* Direct Supabase loading is the storefront content source of truth. */
   if (isCmsRoute()) return false;
   if (!API_URL) return false;
   try {
