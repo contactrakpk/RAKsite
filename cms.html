@@ -119,7 +119,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925finalcleaner"></script>
+  <script src="assets/js/script.js?v=20260925variationsfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -220,6 +220,9 @@
     const persistProduct=async product=>{
       const client=getCmsSupabase();
       if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
+      const cleanVariationImageArray=(images)=>{const values=Array.isArray(images)?images:(images?[images]:[]);return [...new Set(values.map((image)=>String(image||'').trim()).filter((image)=>image&&(image.match(/data:image\//gi)||[]).length<=1).map(formatVariationImageDataUrl).filter(Boolean))];};
+      product.variations=(Array.isArray(product.variations)?product.variations:[]).map((variation)=>typeof variation==='string'?{name:variation,images:[]}:({...variation,images:cleanVariationImageArray(variation.images||variation.variation_images)}));
+      product.variation_images=cleanVariationImageArray(product.variation_images);
       const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),status:'published'};
       const query=isUuid(product.id)?client.from('products').update(payload).eq('id',product.id).select('id'):client.from('products').insert(payload).select('id');
       const {data:storedRows,error}=await query;
@@ -238,8 +241,8 @@
         const variationName=String(typeof variation==='string'?variation:variation.name||'Default');
         const variationId=storedVariations[index]?.id;
         if(!variationId)return [];
-        const imageList=Array.isArray(typeof variation==='string'?[]:variation.images)?(typeof variation==='string'?[]:variation.images):[];
-        const uniqueImages=[...new Set(imageList.map(formatVariationImageDataUrl).filter(Boolean))];
+        const imageList=typeof variation==='string'?[]:variation.images||variation.variation_images||[];
+        const uniqueImages=cleanVariationImageArray(imageList);
         return uniqueImages.map((image_url,sort_order)=>({product_id:product.id,variation_id:variationId,variation_name:variationName,image_url,sort_order}));
       });
       const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id);
@@ -498,6 +501,7 @@
     const fileToDataUrl=(file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const source=sanitizeCmsImageSource(reader.result);if(!source)return resolve('');const image=new Image();image.onload=()=>{const maxSize=1400;const scale=Math.min(1,maxSize/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(sanitizeCmsImageSource(canvas.toDataURL('image/jpeg',.82))||source)};image.onerror=()=>resolve(source);image.src=source};reader.onerror=reject;reader.readAsDataURL(file)});
     const fileFields='<div class=\"field full\"><label>Product images (optional)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Optional: upload four general images. If left blank, the first variation images will be used.</small></div><div class=\"field full\"><label>Image paths (optional)</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
     const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.closest('.variation-editor-row')?.remove();}};});};
+    const appendVariationImage=(existing,newImage)=>Array.isArray(existing)?[...existing,newImage]:[newImage];
     const bindVariationImageRemove=()=>{$$('#variationRows .remove-variation-image').forEach((button)=>{button.onclick=()=>{const stack=button.closest('.variation-image-stack');const pathInput=stack?.querySelector('input[name="variationImagePaths"]');const imageIndex=Number(button.dataset.imageIndex);if(pathInput){const values=String(pathInput.value||'').split(', ').filter(Boolean);values.splice(imageIndex,1);pathInput.value=values.join(', ');}button.closest('.variation-image-chip')?.remove();};});};
     function openProduct(index=null){
       const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:'',images:[]}],price:'',images:[]}:data.products[index];
@@ -573,9 +577,10 @@
           upload.onchange=async()=>{
             const files=[...(upload.files||[])];
             if(!files.length){return;}
-            const current=String(pathInput.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
+            let current=String(pathInput.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
             const urls=await Promise.all(files.map(fileToDataUrl));
-            const merged=[...new Set([...current,...urls])];
+            urls.forEach((url)=>{current=appendVariationImage(current,url);});
+            const merged=[...new Set(current)];
             pathInput.value=merged.join(', ');
             preview.innerHTML=merged.filter(isValidCmsImage).map((src,imageIndex)=>'<span class="variation-image-chip" style="position:relative;display:inline-flex"><img src="'+getValidImgSrc(src)+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block"><button type="button" class="remove-variation-image" data-image-index="'+imageIndex+'" title="Remove image" style="position:absolute;top:-7px;right:-7px;width:18px;height:18px;padding:0;border-radius:50%;background:#bd4b43;color:#fff;font-size:12px;line-height:18px">×</button></span>').join('');bindVariationImageRemove();
           };
