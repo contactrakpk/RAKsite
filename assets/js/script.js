@@ -292,7 +292,7 @@ const resolveCardProductImage = (product = {}) => {
   const firstValidImage = (values) => values
     .map((value) => typeof value === 'string' ? value : value?.image_url || value?.url || value?.src || value?.image || '')
     .map((value) => imageDataUrlSanitizer(value))
-    .find((value) => value && value !== imageFallbackUrl);
+    .find((value) => isRenderableImageSource(value));
   const directImage = firstValidImage([product.image_url, product.image, product.featured_image]);
   if (directImage) return directImage;
 
@@ -756,6 +756,7 @@ const imageDataUrlSanitizer = (source) => {
     value = `data:image/${mime.toLowerCase()};base64,${value.replace(prefixPattern, '')}`;
     return value.includes(',') && value.slice(value.indexOf(',') + 1) ? value : imageFallbackUrl;
   }
+  if (/^data:image\/svg\+xml/i.test(value)) return imageFallbackUrl;
   if (/^data:image\//i.test(value)) return value;
   if (/^https?:|^blob:|^\//i.test(value) || /^(?:\.\.\/|\.\/)?assets\//i.test(value)) return value;
   if (/^[A-Za-z0-9+/_=-]+$/.test(value)) return `data:image/jpeg;base64,${value}`;
@@ -765,9 +766,15 @@ window.cleanImageDataUrl = imageDataUrlSanitizer;
 const getValidImgSrc = imageDataUrlSanitizer;
 window.getValidImgSrc = getValidImgSrc;
 const normalizeImageSource = imageDataUrlSanitizer;
+const isRenderableImageSource = (source) => {
+  const normalized = imageDataUrlSanitizer(source);
+  return normalized !== imageFallbackUrl && (
+    /^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(normalized)
+    || /^(?:https?:|blob:|\/|\.\.\/|\.\/)?assets\//i.test(normalized)
+  );
+};
 const isValidImageSource = (source) => {
-  const normalized = normalizeImageSource(source);
-  return Boolean(normalized) && normalized !== imageFallbackUrl;
+  return isRenderableImageSource(source);
 };
 const resolveProductImage = (source) => {
   const normalized = imageDataUrlSanitizer(source);
