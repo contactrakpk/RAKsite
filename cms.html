@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925variationidlinkfix"></script>
+  <script src="assets/js/script.js?v=20260925dedupvariationimagesfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -234,29 +234,15 @@
         const variationId=storedVariations[index]?.id;
         if(!variationId)return [];
         const imageList=Array.isArray(typeof variation==='string'?[]:variation.images)?(typeof variation==='string'?[]:variation.images):[];
-        return imageList.filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,variation_id:variationId,variation_name:variationName,image_url,sort_order}));
+        const uniqueImages=[...new Set(imageList.filter((image_url)=>typeof image_url==='string'&&image_url.trim()))];
+        return uniqueImages.map((image_url,sort_order)=>({product_id:product.id,variation_id:variationId,variation_name:variationName,image_url,sort_order}));
       });
-      void (async()=>{
-        try {
-          const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id);
-          if(variationImageDelete.error)throw variationImageDelete.error;
-          if(variationImages.length){
-            const variationImageInsert=await client.from('product_variation_images').insert(variationImages);
-            if(variationImageInsert.error)throw variationImageInsert.error;
-          }
-        } catch(error) {
-          if(error?.code==='PGRST204'&&variationImages.length){
-            try {
-              const imagesWithoutSortOrder=variationImages.map(({sort_order,...image})=>image);
-              const fallbackInsert=await client.from('product_variation_images').insert(imagesWithoutSortOrder);
-              if(fallbackInsert.error)console.warn('Skipping variation images after sort_order fallback failed.',fallbackInsert.error);
-            } catch(fallbackError) {
-              console.warn('Skipping variation images after fallback failed.',fallbackError);
-            }
-          }
-          console.warn('Skipping variation images because the Supabase schema is incompatible.',error);
-        }
-      })();
+      const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id);
+      if(variationImageDelete.error)throw variationImageDelete.error;
+      if(variationImages.length){
+        const variationImageInsert=await client.from('product_variation_images').insert(variationImages);
+        if(variationImageInsert.error)throw variationImageInsert.error;
+      }
     };
     const persistReview=async review=>{
       const client=getCmsSupabase();
