@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925reviewonlysave"></script>
+  <script src="assets/js/script.js?v=20260925reviewsfinalmasterfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -242,10 +242,29 @@
     const persistReview=async review=>{
       const client=getCmsSupabase();
       if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
-      const reviewPayload={title:String(review.title||''),rating:parseInt(review.rating,10)||5,review_date:String(review.date||''),author:String(review.author||''),product_name:String(review.product||''),image_path:String(review.image||''),review_text:String(review.text||'')};
-      const query=isUuid(review.id)?client.from('reviews').update(reviewPayload).eq('id',review.id).select('id'):client.from('reviews').insert(reviewPayload).select('id');
-      const {data:storedRows,error}=await query;
-      if(error)throw error;
+      const titleVal=String(review.title||'');
+      const ratingVal=review.rating;
+      const authorVal=String(review.author||'');
+      const textVal=String(review.text||'');
+      const dateVal=String(review.date||'');
+      const productVal=String(review.product||'');
+      const imagePathVal=String(review.image||'');
+      const baseReview={title:titleVal,rating:parseInt(ratingVal,10)||5,author:authorVal,review_text:textVal,text:textVal,review_date:dateVal,date:dateVal,product_name:productVal,product:productVal,image_path:imagePathVal,review_image_path:imagePathVal};
+      let storedRows=null;
+      let lastError=null;
+      let saved=false;
+      for(let attempt=0;attempt<5;attempt+=1){
+        const query=isUuid(review.id)?client.from('reviews').update(baseReview).eq('id',review.id).select():client.from('reviews').insert([baseReview]).select();
+        const {data,error}=await query;
+        if(!error){storedRows=data;saved=true;break;}
+        lastError=error;
+        if(error.code==='PGRST204'){
+          const match=error.message?.match(/'([^']+)' column/);
+          if(match?.[1]&&Object.prototype.hasOwnProperty.call(baseReview,match[1])){delete baseReview[match[1]];continue;}
+        }
+        throw error;
+      }
+      if(!saved)throw lastError||new Error('Supabase review save failed.');
       const stored=storedRows?.[0];
       if(stored?.id)review.id=stored.id;
     };
