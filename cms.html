@@ -50,6 +50,8 @@
       .variation-editor-row .btn{width:100%}
     }
     .modal-form-saving{opacity:.7;pointer-events:none}.spinner-border{display:inline-block;width:1em;height:1em;border:.15em solid currentColor;border-right-color:transparent;border-radius:50%;animation:cms-spin .7s linear infinite;vertical-align:-.125em}@keyframes cms-spin{to{transform:rotate(360deg)}}.toast{top:24px;right:24px;bottom:auto}
+    .modal-backdrop{background:rgba(15,24,19,.42);backdrop-filter:blur(8px);padding:28px}.modal{width:min(760px,100%);max-width:760px;border:1px solid #e2e8e1;border-radius:12px;background:#fff;box-shadow:0 24px 80px rgba(23,32,25,.2);padding:28px}.modal-head{align-items:center;border-bottom:1px solid #edf0eb;padding-bottom:18px;margin-bottom:22px}.modal-head h2{font-size:24px;letter-spacing:-.5px}.close{width:36px;height:36px;border:1px solid #e1e7df;border-radius:10px;background:#f7f9f6;color:var(--muted);font-size:22px}.close:hover{background:#edf4eb;color:var(--ink)}.modal .form-grid{gap:20px}.field{gap:8px}.field label{color:#263228;font-size:11px;font-weight:800;letter-spacing:.04em}.field label span{color:var(--red)}.field input,.field select,.field textarea{border:1px solid #d9e1d8;border-radius:10px;background:#fbfcfa;color:var(--ink);padding:12px 13px;outline:none;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.field input::placeholder,.field textarea::placeholder{color:#a0aaa0}.field input:focus,.field select:focus,.field textarea:focus{border-color:#5c8b69;background:#fff;box-shadow:0 0 0 4px rgba(92,139,105,.14)}.field textarea{min-height:120px;resize:vertical}.field small{color:#879287;font-size:11px;line-height:1.45}.form-actions{border-top:1px solid #edf0eb;margin-top:24px;padding-top:20px}.form-actions .btn.primary{box-shadow:0 8px 18px rgba(47,107,79,.18)}#variationRows{display:grid;gap:14px}.variation-editor-row{display:block!important;margin:0!important;padding:18px!important;border:1px solid #dfe7dc;border-radius:12px;background:#fbfdfb;box-shadow:0 5px 16px rgba(28,52,36,.05)}.variation-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.variation-card-heading strong{color:var(--green-dark);font-size:13px}.variation-card-heading .remove-variation{padding:7px 10px;border-radius:8px;font-size:11px}.variation-card-fields{display:grid;grid-template-columns:minmax(0,1fr) 140px minmax(0,1.35fr);gap:12px;align-items:start}.variation-image-stack{display:grid!important;gap:8px!important}.variation-image-preview{display:flex;flex-wrap:wrap;gap:8px!important;min-height:54px!important;padding:8px;border:1px dashed #ccd8ca;border-radius:10px;background:#f5f8f3}.variation-image-preview img{width:48px!important;height:48px!important;border-radius:9px!important;border:1px solid #d9e2d6!important;object-fit:cover;box-shadow:0 2px 6px rgba(23,32,25,.08)}.variation-image-upload{font-size:11px!important;padding:8px!important;background:#fff!important}.variation-editor-row .variation-image-stack input[type=text]{font-size:11px;padding:10px}.modal .btn{border-radius:10px}.modal-form-saving{opacity:.65;filter:saturate(.7)}
+    @media(max-width:700px){.modal-backdrop{padding:12px}.modal{padding:20px;border-radius:12px}.modal-head h2{font-size:20px}.variation-card-fields{grid-template-columns:1fr}.variation-card-heading{align-items:flex-start}.variation-card-heading .remove-variation{width:auto}}
   </style>
 </head>
 <body>
@@ -114,7 +116,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925completeonepassfix"></script>
+  <script src="assets/js/script.js?v=20260925cmsredesign"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -451,23 +453,23 @@
     const resolveMediaFile=(reference)=>new Promise((resolve)=>{if(!reference?.startsWith('idb://'))return resolve(reference||'');const request=indexedDB.open('rak-media',1);request.onerror=()=>resolve('');request.onsuccess=()=>{const transaction=request.result.transaction('files','readonly');const getRequest=transaction.objectStore('files').get(reference.slice(6));getRequest.onsuccess=()=>resolve(getRequest.result?URL.createObjectURL(getRequest.result):'');getRequest.onerror=()=>resolve('')}});
     const fileToDataUrl=(file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const source=sanitizeCmsImageSource(reader.result);if(!source)return reject(new Error('Invalid image data URL'));const image=new Image();image.onload=()=>{const maxSize=1400;const scale=Math.min(1,maxSize/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);const output=sanitizeCmsImageSource(canvas.toDataURL('image/jpeg',.82));output?resolve(output):reject(new Error('Invalid converted image data URL'))};image.onerror=reject;image.src=source};reader.onerror=reject;reader.readAsDataURL(file)});
     const fileFields='<div class=\"field full\"><label>Product images (optional)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Optional: upload four general images. If left blank, the first variation images will be used.</small></div><div class=\"field full\"><label>Image paths (optional)</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
-    const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.parentElement.remove();}};});};
+    const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.closest('.variation-editor-row')?.remove();}};});};
     function openProduct(index=null){
       const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:'',images:[]}],price:'',images:[]}:data.products[index];
       const variations=(p.variations&&p.variations.length?p.variations:[{name:p.variation||'Default',price:p.price,images:[]}]).map((v)=>typeof v==='string'?{name:v,price:p.price,images:[]}:v);
       const categoryOptions=categories.slice(1).map((c)=>'<option '+(c===p.category?'selected':'')+'>'+c+'</option>').join('');
       const variationRows=variations.map((v,variationIndex)=>{
         const preview=(v.images||[]).map((src)=>'<img src="'+esc(src)+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block">').join('');
-        return '<div class="variation-editor-row" style="display:grid;grid-template-columns:1fr 150px 1fr auto;gap:8px;margin-bottom:12px">'
-          + '<input name="variationNames" required value="'+esc(v.name)+'" placeholder="e.g. Black">'
+        return '<div class="variation-editor-row" data-variation-index="'+variationIndex+'">'
+          + '<div class="variation-card-heading"><strong>Variation #'+(variationIndex+1)+'</strong><button type="button" class="btn danger remove-variation" title="Remove variation">Remove</button></div>'
+          + '<div class="variation-card-fields"><input name="variationNames" required value="'+esc(v.name)+'" placeholder="e.g. Black">'
           + '<input name="variationPrices" type="number" min="0" required value="'+esc(v.price)+'" placeholder="Price">'
-          + '<div class="variation-image-stack" style="display:flex;flex-direction:column;gap:6px;min-width:0">'
+          + '<div class="variation-image-stack">'
           + '<input type="file" class="variation-image-upload" accept="image/*" multiple data-index="'+variationIndex+'" style="width:100%">'
           + '<input type="text" name="variationImagePaths" value="'+esc((v.images||[]).join(', '))+'" placeholder="variation image paths or urls" style="width:100%">'
           + '<div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px">'+preview+'</div>'
           + '</div>'
-          + '<button type="button" class="btn danger remove-variation" title="Remove variation">×</button>'
-          + '</div>';
+          + '</div></div>';
       }).join('');
 
       openModal(index===null?'Add product':'Edit product',
@@ -515,6 +517,8 @@
           row.className='variation-editor-row';
           row.style.cssText='display:grid;grid-template-columns:1fr 150px 1fr auto;gap:8px;margin-bottom:12px';
           row.innerHTML='<input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><div class="variation-image-stack" style="display:flex;flex-direction:column;gap:6px;min-width:0"><input type="file" class="variation-image-upload" accept="image/*" multiple style="width:100%"><input type="text" name="variationImagePaths" placeholder="variation image paths or urls" style="width:100%"><div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px"></div></div><button type="button" class="btn danger remove-variation" title="Remove variation">×</button>';
+          const variationNumber=rowsContainer.querySelectorAll('.variation-editor-row').length+1;
+          row.innerHTML='<div class="variation-card-heading"><strong>Variation #'+variationNumber+'</strong><button type="button" class="btn danger remove-variation" title="Remove variation">Remove</button></div><div class="variation-card-fields"><input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><div class="variation-image-stack"><input type="file" class="variation-image-upload" accept="image/*" multiple><input type="text" name="variationImagePaths" placeholder="variation image paths or urls"><div class="variation-image-preview"></div></div></div>';
           rowsContainer.appendChild(row);
           const upload=row.querySelector('.variation-image-upload');
           const pathInput=row.querySelector('input[name="variationImagePaths"]');
