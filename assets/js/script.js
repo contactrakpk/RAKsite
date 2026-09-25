@@ -744,6 +744,10 @@ const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3
 const imageDataUrlSanitizer = (source) => {
   let value = String(source ?? '').replace(/[\r\n\s]+/g, '');
   if (!value) return imageFallbackUrl;
+  const embeddedDataStart = value.search(/data:image\/\w+;base64,/i);
+  if (embeddedDataStart > 0) value = value.slice(embeddedDataStart);
+  const rawBase64Start = value.search(/(?:^|\/)9j\//i);
+  if (rawBase64Start > 0 && /^https?:|^\//i.test(value)) value = value.slice(rawBase64Start + (value[rawBase64Start] === '/' ? 1 : 0));
   if (/^data:image\/\w+;base64,?$/i.test(value)) return imageFallbackUrl;
   const prefixPattern = /^(data:image\/\w+;base64,)+/i;
   const prefixMatch = value.match(prefixPattern);
