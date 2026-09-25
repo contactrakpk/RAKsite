@@ -728,6 +728,7 @@ const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3
 const imageDataUrlSanitizer = (source) => {
   let value = String(source ?? '').replace(/[\r\n\s]+/g, '');
   if (!value) return imageFallbackUrl;
+  if (/^data:image\/\w+;base64,?$/i.test(value)) return imageFallbackUrl;
   const prefixPattern = /^(data:image\/\w+;base64,)+/i;
   const prefixMatch = value.match(prefixPattern);
   if (prefixMatch) {
@@ -741,6 +742,8 @@ const imageDataUrlSanitizer = (source) => {
   return imageFallbackUrl;
 };
 window.cleanImageDataUrl = imageDataUrlSanitizer;
+const getValidImgSrc = imageDataUrlSanitizer;
+window.getValidImgSrc = getValidImgSrc;
 const normalizeImageSource = imageDataUrlSanitizer;
 const isValidImageSource = (source) => {
   const normalized = normalizeImageSource(source);
@@ -1604,7 +1607,9 @@ const renderDetailPage = async () => {
   const product = products.find((item) => sameProductId(item.id, productId) || String(item.slug || '').toLowerCase() === String(productId).toLowerCase() || String(item.name || '').toLowerCase() === String(productId).toLowerCase());
   if (!product) return;
 
-  const mainImage = document.getElementById('main-product-image');
+  const mainImage = document.getElementById('main-product-image')
+    || document.getElementById('mainProductImg')
+    || document.getElementById('productFeaturedImg');
   const thumbs = document.getElementById('detailThumbs');
   const nameEl = document.getElementById('detailName');
   const typeEl = document.getElementById('detailType');
@@ -1642,7 +1647,7 @@ const renderDetailPage = async () => {
     galleryFallbackImages[index] || galleryFallbackImages[0]
   );
 
-  mainImage.src = imageDataUrlSanitizer(galleryImages[0]);
+  mainImage.src = getValidImgSrc(galleryImages[0]);
   mainImage.alt = product.name;
   mainImage.onerror = () => {
     mainImage.onerror = null;
@@ -1675,7 +1680,7 @@ const renderDetailPage = async () => {
   };
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
-  mainImage.src = imageDataUrlSanitizer(galleryImages[0] || fallbackImage);
+  mainImage.src = getValidImgSrc(galleryImages[0] || fallbackImage);
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
   const fullDescription = product.fullDescription || product.description || '';
   const shortDescription = product.short_description || product.shortDescription || product.description || '';
@@ -1723,7 +1728,7 @@ const renderDetailPage = async () => {
         const currentMainImage = document.getElementById('main-product-image');
         if (currentMainImage) {
           currentMainImage.style.opacity = '0.55';
-          currentMainImage.src = imageDataUrlSanitizer(this.dataset.fullSrc || this.src);
+          currentMainImage.src = getValidImgSrc(this.dataset.fullSrc || this.src);
           currentMainImage.addEventListener('load', () => { currentMainImage.style.opacity = '1'; }, { once: true });
         }
         thumbs.querySelectorAll('.product-thumbnail').forEach((thumb) => {
