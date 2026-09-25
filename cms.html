@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925safeproductdelete"></script>
+  <script src="assets/js/script.js?v=20260925sortorderfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -236,8 +236,16 @@
       try {
         const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id);
         if(variationImageDelete.error)throw variationImageDelete.error;
-        if(variationImages.length){const {error}=await client.from('product_variation_images').insert(variationImages);if(error)throw error;}
+        if(variationImages.length){
+          const variationImageInsert=await client.from('product_variation_images').insert(variationImages);
+          if(variationImageInsert.error)throw variationImageInsert.error;
+        }
       } catch(error) {
+        if(error?.code==='PGRST204'&&variationImages.length){
+          const imagesWithoutSortOrder=variationImages.map(({sort_order,...image})=>image);
+          const fallbackInsert=await client.from('product_variation_images').insert(imagesWithoutSortOrder);
+          if(fallbackInsert.error)console.warn('Skipping variation images after sort_order fallback failed.',fallbackInsert.error);
+        }
         console.warn('Skipping variation images because the Supabase schema is incompatible.',error);
       }
     };
