@@ -1559,7 +1559,10 @@ const renderDetailPage = () => {
   const variations = (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price, images: product.images || [] }]).map((variation) =>
     typeof variation === 'string' ? { name: variation, price: product.price, images: product.images || [] } : variation
   );
-  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || []);
+  const serializeVariationImages = (images) => JSON.stringify(Array.isArray(images) ? images : [])
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;');
+  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || []).filter(Boolean).map(resolveProductImage);
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
@@ -1572,14 +1575,15 @@ const renderDetailPage = () => {
   qtyEl.textContent = '1';
 
   variationsEl.innerHTML = variations.map((variation, index) => `
-    <button type="button" class="variation-pill${index === 0 ? ' active' : ''}" data-variation-index="${index}">
+    <button type="button" class="variation-pill${index === 0 ? ' active' : ''}" data-variation-index="${index}" data-images="${serializeVariationImages(variation.images)}">
       <span>${variation.name}</span><small>PKR ${Number(variation.price).toLocaleString()}</small>
     </button>
   `).join('');
   variationsEl.addEventListener('click', (event) => {
     const button = event.target.closest('[data-variation-index]');
     if (!button) return;
-    selectedVariation = variations[Number(button.dataset.variationIndex)];
+    const selectedImages = JSON.parse(button.dataset.images || '[]');
+    selectedVariation = { ...variations[Number(button.dataset.variationIndex)], images: selectedImages };
     galleryImages = getVariationGallery(selectedVariation);
     variationsEl.querySelectorAll('.variation-pill').forEach((pill) => pill.classList.toggle('active', pill === button));
     priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;

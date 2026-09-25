@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925galleryfix"></script>
+  <script src="assets/js/script.js?v=20260925variationgalleryfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -458,7 +458,7 @@
     const putMediaFile=(file)=>new Promise((resolve,reject)=>{const request=indexedDB.open('rak-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('files');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const key='video-'+Date.now()+'-'+Math.random().toString(36).slice(2);const transaction=request.result.transaction('files','readwrite');transaction.objectStore('files').put(file,key);transaction.oncomplete=()=>resolve('idb://'+key);transaction.onerror=()=>reject(transaction.error)}});
     const resolveMediaFile=(reference)=>new Promise((resolve)=>{if(!reference?.startsWith('idb://'))return resolve(reference||'');const request=indexedDB.open('rak-media',1);request.onerror=()=>resolve('');request.onsuccess=()=>{const transaction=request.result.transaction('files','readonly');const getRequest=transaction.objectStore('files').get(reference.slice(6));getRequest.onsuccess=()=>resolve(getRequest.result?URL.createObjectURL(getRequest.result):'');getRequest.onerror=()=>resolve('')}});
     const fileToDataUrl=(file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const maxSize=1400;const scale=Math.min(1,maxSize/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.82))};image.onerror=reject;image.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)});
-    const fileFields='<div class=\"field full\"><label>Product images <span>*</span> (4 required)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Select exactly four images, or use image paths below.</small></div><div class=\"field full\"><label>Image paths</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
+    const fileFields='<div class=\"field full\"><label>Product images (optional)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Optional: upload four general images. If left blank, the first variation images will be used.</small></div><div class=\"field full\"><label>Image paths (optional)</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
     const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.parentElement.remove();}};});};
     function openProduct(index=null){
       const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:'',images:[]}],price:'',images:[]}:data.products[index];
@@ -491,9 +491,6 @@
         async (form)=>{
           const files=(form.getAll('images')||[]).filter((file)=>file instanceof File && file.size>0);
           const imagePaths=String(form.get('imagePaths')||'').split(',').map((x)=>x.trim()).filter(Boolean);
-          const imageData=files.length===4?await Promise.all(files.map(fileToDataUrl)):(imagePaths.length===4?imagePaths:(p.images||[]));
-          if(imageData.length!==4){alert('Please upload exactly 4 images or enter exactly 4 image paths.'); return false;}
-
           const names=Array.from(document.querySelectorAll('input[name="variationNames"]')).map((node)=>node.value.trim()).filter(Boolean);
           const prices=Array.from(document.querySelectorAll('input[name="variationPrices"]')).map((node)=>Number(node.value));
           const variationPathInputs=document.querySelectorAll('input[name="variationImagePaths"]');
@@ -507,6 +504,10 @@
           }
 
           if(!variationItems.length||variationItems.some((item)=>!item.name||!Number.isFinite(item.price)||item.price<0)){alert('Please add at least one complete variation.'); return false;}
+          const explicitImages=files.length===4?await Promise.all(files.map(fileToDataUrl)):(imagePaths.length===4?imagePaths:[]);
+          const firstVariationImages=(variationItems[0]?.images||[]).filter(Boolean).slice(0,4);
+          const imageData=explicitImages.length===4?explicitImages:(firstVariationImages.length?firstVariationImages:(p.images||[]));
+          if(imageData.length!==4){alert('Please provide four general images or four images in the first variation.'); return false;}
           const record={id:p.id||'rak-'+Date.now(),name:form.get('name'),category:form.get('category'),description:form.get('description'),fullDescription:form.get('fullDescription'),variations:variationItems,price:variationItems[0].price||0,images:imageData};
           if(index===null){data.products.push(record);} else {data.products[index]=record;}
           return {productOnly:true,product:record};
