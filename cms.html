@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925reviewsfix"></script>
+  <script src="assets/js/script.js?v=20260925clientfromfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -130,7 +130,21 @@
 
       window._supabase = window.supabase || window._supabase || null;
       function getCmsSupabase() {
-        return window.supabase || window._supabase || window.supabaseClient || (window.supabaseLib ? window.supabaseLib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+        if (window._supabaseInstance && typeof window._supabaseInstance.from === 'function') {
+          return window._supabaseInstance;
+        }
+        if (window.supabase && typeof window.supabase.from === 'function') {
+          return window.supabase;
+        }
+
+        const url = window.SUPABASE_URL || 'https://yhrxpmglucstpoyddkwy.supabase.co';
+        const key = window.SUPABASE_ANON_KEY || 'sb_publishable_5kbTdqFWfjasOampdLwNEA_XLEwPtxf';
+        const lib = window.supabase || window.supabaseClient || window.supabaseLib || null;
+        if (lib && typeof lib.createClient === 'function') {
+          window._supabaseInstance = lib.createClient(url, key);
+          return window._supabaseInstance;
+        }
+        return null;
       }
       function getSupabaseClient() {
         if (window.supabaseClient) return window.supabaseClient;
@@ -210,7 +224,7 @@
     const isUuid=value=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||''));
     const persistProduct=async product=>{
       const client=getCmsSupabase();
-      if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),status:'published'};
       const query=isUuid(product.id)?client.from('products').update(payload).eq('id',product.id).select('id'):client.from('products').insert(payload).select('id');
       const {data:storedRows,error}=await query;
@@ -234,7 +248,7 @@
     };
     const persistReview=async review=>{
       const client=getCmsSupabase();
-      if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       let productId=null;
       if(review.product){const {data:product,error}=await client.from('products').select('id').eq('name',String(review.product).trim()).limit(1).maybeSingle();if(error)throw error;productId=product?.id||null;}
       const payload={product_id:productId,title:String(review.title||''),body:String(review.text||''),author:String(review.author||''),rating:Number(review.rating)||5,review_date:review.date,image_url:String(review.image||''),status:'published'};
@@ -246,28 +260,28 @@
     };
      const persistPage=async(name,page)=>{
        const client=getCmsSupabase();
-       if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
        const payload={slug:name.toLowerCase(),name,hero_url:String(page.hero||''),banner_url:String(page.banner||'')};
        const {error}=await client.from('pages').upsert(payload,{onConflict:'slug'});
        if(error)throw error;
      };
      const deleteReviewFromSupabase=async(review)=>{
        const client=getCmsSupabase();
-       if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
        if(!isUuid(review.id))return;
        const {error}=await client.from('reviews').delete().eq('id',review.id);
        if(error)throw error;
      };
     const persistSettings=async()=>{
       const client=getCmsSupabase();
-      if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       const settings=[{key:'announcement',value:String(data.announcement||'')},{key:'shipping_cost',value:String(Number(data.shipping)||0)}];
       const {error}=await client.from('settings').upsert(settings,{onConflict:'key'});
       if(error)throw error;
     };
     const removeVideoFromSupabase=async(video,type)=>{
       const client=getCmsSupabase();
-      if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       const pageSlug=type==='shop'?'shop':String(video.category||'').toLowerCase();
       let query=client.from('videos').delete().eq('page_slug',pageSlug);
       if(isUuid(video.id)) query=query.eq('id',video.id);
@@ -277,7 +291,7 @@
     };
     const persistVideo=async(video,type)=>{
       const client=getCmsSupabase();
-      if(!client)throw new Error('Supabase client unavailable');
+      if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       if(!video.video||video.video.startsWith('idb://'))throw new Error('Use a permanent video URL before saving.');
       const pageSlug=type==='shop'?'shop':String(video.category||'').trim().toLowerCase();
       if(!pageSlug)throw new Error('Video page is missing.');
@@ -329,7 +343,7 @@
     function renderOverview(){ $('#statProducts').textContent=data.products.length;$('#statReviews').textContent=data.reviews.length;$('#statShipping').textContent=Number(data.shipping).toLocaleString();$('#statMedia').textContent=Object.values(data.pages).length*2+data.shopVideos.length+data.categoryVideos.length;$('#recentProducts').innerHTML=(data.products.length?data.products.slice(-5).reverse():[]).map(product=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(product.images?.[0]||'')}" alt=""><b>${esc(product.name)}</b></div></td><td>${esc(product.category)}</td><td>PKR ${Number(product.price).toLocaleString()}</td><td><span class="badge">Published</span></td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">No products yet. Add your first product.</div></td></tr>' }
     async function safeSupabaseOrderQuery(table, select, fallbackColumns = ['created_at', 'id']) {
       const client = getCmsSupabase();
-      if (!client) return { data: null, error: new Error('Supabase client unavailable') };
+      if (!client || typeof client.from !== 'function') return { data: null, error: new Error('Supabase client unavailable') };
       for (const column of fallbackColumns) {
         try {
           const { data, error } = await client.from(table).select(select).order(column, { ascending: false });
@@ -347,10 +361,12 @@
     }
     async function deleteCmsOrder(id) {
       const client=getCmsSupabase();
-      if(!client)return {error:new Error('Supabase client unavailable')};
+      if(!client || typeof client.from !== 'function')return {error:new Error('Supabase client unavailable')};
       return client.from('orders').delete().eq('id',id);
     }
     async function getOrders(){
+      const client=getCmsSupabase();
+      if(!client || typeof client.from !== 'function')return [];
       const result = await safeSupabaseOrderQuery('orders', '*', ['created_at', 'id']);
       if (result.error) {
         return [];
@@ -495,7 +511,9 @@
       let reviews = [];
 
       try {
-        const pageResult = await _supabase.from('pages').select('name,hero_url,banner_url');
+        const client=getCmsSupabase();
+        if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
+        const pageResult = await client.from('pages').select('name,hero_url,banner_url');
         if (pageResult.error) {
           console.warn('Supabase pages fetch failed; leaving local CMS data intact.', pageResult.error);
         } else {
