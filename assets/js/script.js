@@ -722,9 +722,14 @@ const renderWhatsAppButton = () => {
   updateHeaderState();
 })();
 
-const imageFallbackUrl = 'https://via.placeholder.com/600x600?text=Image+Not+Found';
-const validBase64ImagePattern = /^data:image\/(png|jpg|jpeg|webp);base64,/i;
-const normalizeImageSource = (source) => String(source || '').trim().replace(/^(data:image\/(?:png|jpg|jpeg|webp);base64):/i, '$1,');
+const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22600%22 height=%22600%22 viewBox=%220 0 600 600%22%3E%3Crect width=%22600%22 height=%22600%22 fill=%22%23f1f3f5%22%2F%3E%3Ctext x=%22300%22 y=%22310%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%236b7280%22%3EImage Not Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+const validBase64ImagePattern = /^data:image\/(png|jpg|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/i;
+const normalizeImageSource = (source) => {
+  const value = String(source || '').trim().replace(/^(data:image\/(?:png|jpg|jpeg|webp);base64):/i, '$1,');
+  if (/^data:image\//i.test(value) || /^https?:|^blob:|^\//i.test(value)) return value;
+  if (/^\/9j\//.test(value) || (value.length > 32 && /^[A-Za-z0-9+/]+={0,2}$/.test(value))) return `data:image/jpeg;base64,${value}`;
+  return value;
+};
 const isValidImageSource = (source) => {
   const normalized = normalizeImageSource(source);
   return Boolean(normalized) && (!/^data:/i.test(normalized) || validBase64ImagePattern.test(normalized));
