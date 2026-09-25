@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925deduplicateproducts"></script>
+  <script src="assets/js/script.js?v=20260925safeproductdelete"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -402,12 +402,23 @@
       if(!product) return;
       if(isUuid(product.id)){
         const client=getCmsSupabase();
-        if(!client){showToast('Supabase client unavailable');return;}
+        if(!client || typeof client.from !== 'function'){showToast('Supabase client unavailable');return;}
+        try {
+          const variationDelete=await client.from('product_variations').delete().eq('product_id',product.id);
+          if(variationDelete.error)throw variationDelete.error;
+          const variationImageDelete=await client.from('product_variation_images').delete().eq('product_id',product.id);
+          if(variationImageDelete.error)throw variationImageDelete.error;
+        } catch(error) {
+          console.warn('Skipping product variation cleanup during delete:',error);
+        }
         const {error}=await client.from('products').delete().eq('id',product.id);
         if(error){console.error(error);showToast(`Could not delete from Supabase: ${error.message||'check permissions'}`);return;}
       }
       data.products.splice(index,1);
-      if(await save())renderAll();
+      localStorage.setItem('rak-cms-data',JSON.stringify(data));
+      renderProducts();
+      renderOverview();
+      showToast('Product deleted successfully');
     }
     function renderProducts(){ $('#productsTable').innerHTML=data.products.map((p,i)=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(p.images?.[0]||'')}" alt=""><b>${esc(p.name)}</b></div></td><td>${esc(p.category)}</td><td>${(p.variations||[{name:p.variation||'Default'}]).map(v=>esc(typeof v==='string'?v:v.name)).join(', ')}</td><td>PKR ${Number(p.price).toLocaleString()}</td><td><span class="badge">Published</span></td><td><button class="icon-btn edit-product" data-i="${i}" title="Edit">&#9998;</button><button class="icon-btn delete-product" data-i="${i}" title="Delete">&#215;</button></td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">Your catalog is empty.</div></td></tr>';$$('.edit-product').forEach(b=>b.onclick=()=>openProduct(Number(b.dataset.i)));$$('.delete-product').forEach(b=>b.onclick=async()=>{if(confirm('Delete this product?')){await deleteProductByIndex(Number(b.dataset.i))}})}
     const removeStorageFile=async(url)=>{const match=String(url||'').match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);if(!match)return;const {error}=await _supabase.storage.from(match[1]).remove([decodeURIComponent(match[2])]);if(error)console.warn('Could not remove media object:',error)};
