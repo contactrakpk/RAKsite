@@ -1645,14 +1645,22 @@ const renderDetailPage = async () => {
   const productImages = Array.isArray(product.images)
     ? product.images.map(normalizeImageSource).filter(isValidImageSource).slice(0, 4).map(resolveProductImage).filter(Boolean)
     : [];
-  const variationFallbackImages = (product.variation_images || product.variationImages || (product.variations || []).flatMap((variation) => typeof variation === 'string' ? [] : (variation.images || variation.variation_images || [])))
+  const variationFallbackImages = (product.variation_images || product.variationImages || [
+    ...(Array.isArray(product.product_variations) ? product.product_variations : []),
+    ...(Array.isArray(product.variations) ? product.variations : [])
+  ].flatMap((variation) => typeof variation === 'string' ? [variation] : [variation.image_url, variation.image, ...(variation.images || []), ...(variation.variation_images || [])]))
     .map((image) => typeof image === 'string' ? image : image?.image_url || image?.url || image?.src || image?.image || '')
     .map(normalizeImageSource)
     .filter(isValidImageSource)
     .slice(0, 4)
     .map(resolveProductImage)
     .filter(Boolean);
-  const initialGalleryImages = productImages.length ? productImages : variationFallbackImages;
+  const directPrimaryImage = [product.image_url, product.image, product.featured_image]
+    .map(normalizeImageSource)
+    .find(isValidImageSource);
+  const initialGalleryImages = directPrimaryImage
+    ? (productImages.length ? productImages : [resolveProductImage(directPrimaryImage)])
+    : (variationFallbackImages.length ? variationFallbackImages : productImages);
   const galleryFallbackImages = initialGalleryImages.length ? initialGalleryImages : [
         fallbackImage,
         `${assetPrefix}${heroImageByCategory.shop}`,
@@ -1682,7 +1690,7 @@ const renderDetailPage = async () => {
     ? image
     : image?.image_url || image?.url || image?.src || image?.image || '';
   const getVariationGallery = (variation) => {
-    const variationImages = variation?.images || variation?.variation_images || variation?.variationImages || [];
+    const variationImages = [variation?.image_url, variation?.image, ...(variation?.images || []), ...(variation?.variation_images || []), ...(variation?.variationImages || [])].filter(Boolean);
     const productVariationImages = product.variation_images || product.variationImages || [];
     const candidates = Array.isArray(variationImages) && variationImages.length
       ? variationImages
