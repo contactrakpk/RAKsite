@@ -722,10 +722,18 @@ const renderWhatsAppButton = () => {
   updateHeaderState();
 })();
 
+const imageFallbackUrl = 'https://via.placeholder.com/600x600?text=Image+Not+Found';
+const validBase64ImagePattern = /^data:image\/(png|jpg|jpeg|webp);base64,/i;
+const normalizeImageSource = (source) => String(source || '').trim().replace(/^(data:image\/(?:png|jpg|jpeg|webp);base64):/i, '$1,');
+const isValidImageSource = (source) => {
+  const normalized = normalizeImageSource(source);
+  return Boolean(normalized) && (!/^data:/i.test(normalized) || validBase64ImagePattern.test(normalized));
+};
 const resolveProductImage = (source) => {
-  if (!source) return '';
-  if (/^(data:|blob:|https?:|\/)/i.test(source)) return source;
-  return `${window.location.pathname.includes('/pages/') ? '../' : ''}${source}`;
+  const normalized = normalizeImageSource(source);
+  if (!isValidImageSource(normalized)) return '';
+  if (/^(data:|blob:|https?:|\/)/i.test(normalized)) return normalized;
+  return `${window.location.pathname.includes('/pages/') ? '../' : ''}${normalized}`;
 };
 
 const resolveReviewImage = (review) => resolveProductImage(review.image_path || review.review_image_path || review.image || 'assets/images/default-review.jpg');
@@ -1551,8 +1559,8 @@ const fetchDetailVariationData = async (productId) => {
     const imageMap = {};
     (Array.isArray(imageRows) ? imageRows : []).forEach((image) => {
       const variationId = String(image.variation_id || '');
-      const imageUrl = image.image_url || image.url || image.src || image.image || '';
-      if (!variationId || !imageUrl) return;
+      const imageUrl = normalizeImageSource(image.image_url || image.url || image.src || image.image || '');
+      if (!variationId || !isValidImageSource(imageUrl)) return;
       if (!imageMap[variationId]) imageMap[variationId] = [];
       if (!imageMap[variationId].includes(imageUrl)) imageMap[variationId].push(imageUrl);
     });
@@ -1594,7 +1602,7 @@ const renderDetailPage = async () => {
   const categoryKeyName = String(product.category || 'shop').toLowerCase();
   const fallbackImage = `${assetPrefix}${heroImageByCategory[categoryKeyName] || heroImageByCategory.shop}`;
   const productImages = Array.isArray(product.images) && product.images.length
-    ? product.images.filter((image) => typeof image === 'string' && image.trim()).slice(0, 4).map(resolveProductImage)
+    ? product.images.filter(isValidImageSource).slice(0, 4).map(resolveProductImage).filter(Boolean)
     : [
         fallbackImage,
         `${assetPrefix}${heroImageByCategory.shop}`,
@@ -1609,7 +1617,7 @@ const renderDetailPage = async () => {
   mainImage.alt = product.name;
   mainImage.onerror = () => {
     mainImage.onerror = null;
-    mainImage.src = fallbackImage;
+    mainImage.src = imageFallbackUrl;
   };
   nameEl.textContent = product.name;
   typeEl.textContent = product.type;
@@ -1620,7 +1628,10 @@ const renderDetailPage = async () => {
   const serializeVariationImages = (images) => JSON.stringify(Array.isArray(images) ? images : [])
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;');
-  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || []).filter(Boolean).map(resolveProductImage);
+  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || [])
+    .filter(isValidImageSource)
+    .map(resolveProductImage)
+    .filter(Boolean);
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
@@ -1662,7 +1673,7 @@ const renderDetailPage = async () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
     thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
     <button type="button" class="detail-thumb" data-image-index="${index + 1}">
-      <img class="product-thumbnail" src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${fallbackImage}'" />
+      <img class="product-thumbnail" src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
     `).join('');
     thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {
