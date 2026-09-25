@@ -46,11 +46,15 @@ CREATE TABLE IF NOT EXISTS product_variations (
 CREATE TABLE IF NOT EXISTS product_variation_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  variation_id UUID REFERENCES product_variations(id) ON DELETE CASCADE,
   variation_name TEXT NOT NULL,
   image_url TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   UNIQUE(product_id, variation_name, sort_order)
 );
+
+ALTER TABLE product_variation_images
+  ADD COLUMN IF NOT EXISTS variation_id UUID REFERENCES product_variations(id) ON DELETE CASCADE;
 
 CREATE TABLE IF NOT EXISTS videos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

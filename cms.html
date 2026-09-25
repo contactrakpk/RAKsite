@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925timeout15sfix"></script>
+  <script src="assets/js/script.js?v=20260925variationidlinkfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -227,11 +227,14 @@
       if(images.length){const {error}=await client.from('product_images').insert(images);if(error)throw error;}
       const variationDelete=await client.from('product_variations').delete().eq('product_id',product.id); if(variationDelete.error)throw variationDelete.error;
       const variations=(product.variations||[]).map((variation,sort_order)=>({product_id:product.id,name:String(typeof variation==='string'?variation:variation.name||'Default'),price:Number(typeof variation==='string'?product.price:variation.price)||0,sort_order}));
-      if(variations.length){const {error}=await client.from('product_variations').insert(variations);if(error)throw error;}
-      const variationImages=(product.variations||[]).flatMap((variation)=>{
+      let storedVariations=[];
+      if(variations.length){const {data:insertedVariations,error}=await client.from('product_variations').insert(variations).select('id,product_id,name,sort_order');if(error)throw error;storedVariations=insertedVariations||[];if(storedVariations.length!==variations.length)throw new Error('Supabase did not return every saved variation ID.');}
+      const variationImages=(product.variations||[]).flatMap((variation,index)=>{
         const variationName=String(typeof variation==='string'?variation:variation.name||'Default');
+        const variationId=storedVariations[index]?.id;
+        if(!variationId)return [];
         const imageList=Array.isArray(typeof variation==='string'?[]:variation.images)?(typeof variation==='string'?[]:variation.images):[];
-        return imageList.filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,variation_name:variationName,image_url,sort_order}));
+        return imageList.filter(Boolean).map((image_url,sort_order)=>({product_id:product.id,variation_id:variationId,variation_name:variationName,image_url,sort_order}));
       });
       void (async()=>{
         try {

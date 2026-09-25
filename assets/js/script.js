@@ -329,13 +329,14 @@ const loadSupabaseContent = async () => {
       runSupabaseSimpleQuery('products', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseSimpleQuery('product_variations', '*'),
       runSupabaseSimpleQuery('product_images', '*'),
+      runSupabaseSimpleQuery('product_variation_images', '*'),
       runSupabaseSimpleQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseSimpleQuery('videos', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
       _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
     ]);
 
-    const [productResult, productVariationResult, productImageResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
+    const [productResult, productVariationResult, productImageResult, productVariationImageResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
       request,
       new Promise((_, reject) => window.setTimeout(() => reject(new Error('Supabase storefront fetch timed out after 8 seconds')), 8000))
     ]);
@@ -347,6 +348,7 @@ const loadSupabaseContent = async () => {
     const remoteProducts = dedupeProducts(normalizeProducts(productResult?.data));
     const remoteProductVariations = normalizeProducts(productVariationResult?.data);
     const remoteProductImages = normalizeProducts(productImageResult?.data);
+    const remoteProductVariationImages = normalizeProducts(productVariationImageResult?.data);
     const remoteReviews = normalizeProducts(reviewResult?.data);
     const remoteVideos = normalizeProducts(videoResult?.data);
     const remoteSettings = normalizeProducts(settingsResult?.data);
@@ -377,6 +379,15 @@ const loadSupabaseContent = async () => {
       });
     });
 
+    const variationImageMap = new Map();
+    remoteProductVariationImages.forEach((image) => {
+      const variationId = String(image.variation_id ?? image.variationId ?? '');
+      if (!variationId) return;
+      if (!variationImageMap.has(variationId)) variationImageMap.set(variationId, []);
+      const imageUrl = image.image_url || image.url || image.src || image.image || '';
+      if (imageUrl) variationImageMap.get(variationId).push(imageUrl);
+    });
+
     if (Array.isArray(remoteSettings)) {
       const settings = Object.fromEntries(remoteSettings.map((setting) => [setting.key, setting.value]));
       if (settings.shipping_cost !== undefined) {
@@ -405,7 +416,7 @@ const loadSupabaseContent = async () => {
           sale_price: Number(variation.sale_price ?? variation.price ?? 0) || 0,
           regular_price: Number(variation.regular_price ?? variation.price ?? 0) || 0,
           image_url: variation.image_url || variation.image || variation.featured_image || '',
-          images: Array.isArray(variation.images) ? variation.images.filter(Boolean) : []
+          images: variationImageMap.get(String(variation.id || variation.variation_id || '')) || (Array.isArray(variation.images) ? variation.images.filter(Boolean) : [])
         }));
 
         const normalizedImages = productImages
@@ -423,6 +434,7 @@ const loadSupabaseContent = async () => {
           price: resolveCardProductPrice({ ...product, product_variations: normalizedVariations, product_images: normalizedImages }),
           images: normalizedImages.map((image) => image.image_url).filter(Boolean),
           variations: normalizedVariations.map((variation) => ({
+            id: variation.id || variation.variation_id || '',
             name: variation.name,
             price: Number(variation.price) || 0,
             sale_price: Number(variation.sale_price) || 0,
