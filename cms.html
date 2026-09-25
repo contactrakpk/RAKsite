@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsiife"></script>
+  <script src="assets/js/script.js?v=20260925cmsauthfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -129,7 +129,16 @@
       }
 
       window._supabase = window.supabase || window._supabase || null;
-      const _supabase = window._supabase;
+      function getSupabaseClient() {
+        if (window.supabaseClient) return window.supabaseClient;
+        if (window.supabase && typeof window.supabase.auth === 'object') return window.supabase;
+        const lib = window.supabase || window.supabaseClient || null;
+        if (lib && typeof lib.createClient === 'function') {
+          window.supabaseClient = lib.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+          return window.supabaseClient;
+        }
+        return null;
+      }
       console.info('CMS Supabase project:',new URL(window.SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
@@ -146,7 +155,9 @@
     function showCmsApp(){ $('#authShell').classList.remove('visible'); $('#cmsApp').style.display='flex'; }
     async function verifyAdminSession(){
       try {
-        const {data,error}=await _supabase.auth.getSession();
+        const client = getSupabaseClient();
+        if (!client || !client.auth) throw new Error('Supabase authentication client is not loaded properly.');
+        const {data,error}=await client.auth.getSession();
         if(error||!data.session){ throw new Error('Unauthorized'); }
         setStoredToken(data.session.access_token);
         showCmsApp();
@@ -164,8 +175,10 @@
       const status=$('#authStatus');
       status.textContent='Checking credentials...';
       try {
+        const client = getSupabaseClient();
+        if (!client || !client.auth) throw new Error('Supabase authentication client is not loaded properly.');
         const email=loginIdentifier.includes('@') ? loginIdentifier : SUPABASE_ADMIN_EMAIL;
-        const {data,error}=await _supabase.auth.signInWithPassword({ email, password });
+        const {data,error}=await client.auth.signInWithPassword({ email, password });
         if(error||!data.session){ throw new Error(error?.message || 'Login failed'); }
         setStoredToken(data.session.access_token);
         status.textContent='';
