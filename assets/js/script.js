@@ -441,7 +441,7 @@ const loadSupabaseContent = async () => {
         ...review,
         date: review.review_date || review.date,
         text: review.body || review.text || '',
-        image: review.image_url || review.image || '',
+        image: review.image_path || review.review_image_path || review.image_url || review.image || '',
         product: productNames.get(String(review.product_id)) || review.product || ''
       }));
     }
@@ -504,7 +504,7 @@ const loadRemoteContent = async () => {
         variations: (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) => typeof variation === 'string' ? { name: variation, price: product.price } : variation)
       })));
     }
-    if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body, image: review.image || review.image_url || '', product: review.product || review.product_name || '' }));
+    if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body || review.review_text, image: review.image_path || review.review_image_path || review.image || review.image_url || '', product: review.product || review.product_name || '' }));
     if (Array.isArray(remote.videos)) {
       const productByName = new Map(products.map((product) => [product.name, product]));
       const normalizedVideos = remote.videos
@@ -713,6 +713,8 @@ const resolveProductImage = (source) => {
   if (/^(data:|blob:|https?:|\/)/i.test(source)) return source;
   return `${window.location.pathname.includes('/pages/') ? '../' : ''}${source}`;
 };
+
+const resolveReviewImage = (review) => resolveProductImage(review.image_path || review.review_image_path || review.image || 'assets/images/default-review.jpg');
 
 const getCmsPageMedia = (pageName) => Object.entries(cmsData?.pages || {})
   .find(([name]) => name.toLowerCase() === pageName.toLowerCase())?.[1] || null;
@@ -1021,7 +1023,7 @@ const renderCategoryPage = async () => {
           <div class="reviews-track category-review-track">
             ${categoryReviews.map((review) => `
               <article class="review-card">
-                <img src="${resolveProductImage(review.image)}" alt="${review.product || 'Customer review'}" />
+                <img src="${resolveReviewImage(review)}" alt="${review.product || 'Customer review'}" />
                 <div class="review-card-body">
                   <div class="review-card-meta"><span class="review-stars">${'★'.repeat(review.rating)}</span><time>${formatReviewDate(review.date)}</time></div>
                   <h3>${review.title}</h3>
@@ -1490,7 +1492,7 @@ const renderShopReviews = () => {
     <div class="reviews-carousel">
       <button type="button" class="review-nav review-nav-prev" aria-label="Previous reviews">‹</button>
       <div class="reviews-track" id="reviewsTrack">
-          ${validReviews.map((review) => `<article class="review-card"><img src="${resolveProductImage(review.image || heroImageByCategory.cosmetics)}" alt="${review.product || 'Customer review'}" /><div class="review-card-body"><div class="review-card-meta"><span class="review-stars">${'★'.repeat(Number(review.rating || 0))}</span><time>${formatReviewDate(review.date)}</time></div><h3>${review.title || 'Customer review'}</h3><p>${review.text}</p><div class="review-author"><strong>${review.author}</strong><span>${review.product || 'Customer review'}</span></div></div></article>`).join('')}
+          ${validReviews.map((review) => `<article class="review-card"><img src="${resolveReviewImage(review)}" alt="${review.product || 'Customer review'}" /><div class="review-card-body"><div class="review-card-meta"><span class="review-stars">${'★'.repeat(Number(review.rating || 0))}</span><time>${formatReviewDate(review.date)}</time></div><h3>${review.title || 'Customer review'}</h3><p>${review.text}</p><div class="review-author"><strong>${review.author}</strong><span>${review.product || 'Customer review'}</span></div></div></article>`).join('')}
       </div>
       <button type="button" class="review-nav review-nav-next" aria-label="Next reviews">›</button>
     </div>
@@ -1660,7 +1662,7 @@ const renderDetailPage = () => {
         <div class="reviews-track detail-review-track">
           ${reviews.map((review) => `
             <article class="review-card">
-              <img src="${resolveProductImage(review.image || heroImageByCategory.cosmetics)}" alt="${review.product || 'Customer review'}" />
+              <img src="${resolveReviewImage(review)}" alt="${review.product || 'Customer review'}" />
               <div class="review-card-body">
                 <div class="review-card-meta"><span class="review-stars">${'★'.repeat(review.rating)}</span><time>${formatReviewDate(review.date)}</time></div>
                 <h3>${review.title}</h3>
