@@ -741,8 +741,18 @@ const renderWhatsAppButton = () => {
 })();
 
 const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22600%22 height=%22600%22 viewBox=%220 0 600 600%22%3E%3Crect width=%22600%22 height=%22600%22 fill=%22%23f1f3f5%22%2F%3E%3Ctext x=%22300%22 y=%22310%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2230%22 fill=%22%236b7280%22%3EImage Not Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+const fixImageSrc = (src) => {
+  if (!src || typeof src !== 'string') return '';
+  const value = src.trim();
+  if (value.startsWith('data:image/') || value.startsWith('http://') || value.startsWith('https://')) return value;
+  if (value.startsWith('9j/') || value.startsWith('/9j/') || value.startsWith('iVBORw0KGgo')) {
+    return `data:image/jpeg;base64,${value.replace(/^\/+/, '')}`;
+  }
+  return value;
+};
+window.fixImageSrc = fixImageSrc;
 const imageDataUrlSanitizer = (source) => {
-  let value = String(source ?? '').replace(/[\r\n\s]+/g, '');
+  let value = fixImageSrc(String(source ?? '')).replace(/[\r\n\s]+/g, '');
   if (!value) return imageFallbackUrl;
   const embeddedDataStart = value.search(/data:image\/\w+;base64,/i);
   if (embeddedDataStart > 0) value = value.slice(embeddedDataStart);
@@ -763,7 +773,7 @@ const imageDataUrlSanitizer = (source) => {
   return imageFallbackUrl;
 };
 window.cleanImageDataUrl = imageDataUrlSanitizer;
-const formatImageSrc = (imgStr) => imageDataUrlSanitizer(imgStr);
+const formatImageSrc = (imgStr) => imageDataUrlSanitizer(fixImageSrc(imgStr));
 window.formatImageSrc = formatImageSrc;
 const getValidImgSrc = imageDataUrlSanitizer;
 window.getValidImgSrc = getValidImgSrc;
