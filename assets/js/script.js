@@ -744,13 +744,16 @@ const imageFallbackUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3
 const fixImageSrc = (src) => {
   if (!src || typeof src !== 'string') return '';
   const value = src.trim();
-  if (value.startsWith('data:image/') || value.startsWith('http://') || value.startsWith('https://')) return value;
+  if (value.startsWith('data:image/')) return value.replace(/base64\./i, 'base64,');
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
   if (value.startsWith('9j/') || value.startsWith('/9j/') || value.startsWith('iVBORw0KGgo')) {
     return `data:image/jpeg;base64,${value.replace(/^\/+/, '')}`;
   }
   return value;
 };
 window.fixImageSrc = fixImageSrc;
+const sanitizeBase64 = (src) => fixImageSrc(src);
+window.sanitizeBase64 = sanitizeBase64;
 const imageDataUrlSanitizer = (source) => {
   let value = fixImageSrc(String(source ?? '')).replace(/[\r\n\s]+/g, '');
   if (!value) return imageFallbackUrl;
