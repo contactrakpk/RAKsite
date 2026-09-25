@@ -1742,8 +1742,8 @@ const renderDetailPage = async () => {
   };
   const renderThumbnails = () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
-    thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
-    <button type="button" class="detail-thumb" data-image-index="${index + 1}">
+    thumbs.innerHTML = displayImages.map((src, index) => `
+    <button type="button" class="detail-thumb${index === 0 ? ' active' : ''}" data-image-index="${index}">
       <img class="product-thumbnail" src="${imageDataUrlSanitizer(src)}" data-full-src="${imageDataUrlSanitizer(src)}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
     `).join('');
