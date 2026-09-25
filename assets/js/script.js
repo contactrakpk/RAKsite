@@ -845,7 +845,18 @@ const createProductCard = (product) => {
     product.name || product.title || product.productName || product.product_name || product.category || 'Product'
   ).trim() || 'Product';
   const productImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  const primaryProductImage = resolveCardProductImage(product) || productImages[0] || 'assets/images/placeholder.jpg';
+  const variationImageValues = [
+    ...(Array.isArray(product.variation_images) ? product.variation_images : []),
+    ...(Array.isArray(product.variations) ? product.variations.flatMap((variation) => typeof variation === 'string'
+      ? [variation]
+      : [variation.image_url, variation.image, ...(Array.isArray(variation.images) ? variation.images : [])]) : [])
+  ];
+  const variationImages = variationImageValues
+    .map((image) => typeof image === 'string' ? image : image?.image_url || image?.url || image?.src || image?.image || '')
+    .map(imageDataUrlSanitizer)
+    .filter(isRenderableImageSource);
+  const primaryProductImage = variationImages[0] || resolveCardProductImage(product) || productImages[0] || 'assets/images/placeholder.jpg';
+  const hoverProductImage = variationImages[1] || '';
   const productPrice = Number(product.price) > 0
     ? Number(product.price)
     : Number(product.base_price) > 0
@@ -863,7 +874,7 @@ const createProductCard = (product) => {
   card.innerHTML = `
     <div class="card-image">
       <img class="card-image-primary" src="${resolveProductImage(primaryProductImage)}" alt="${productName}" />
-      ${productImages[1] ? `<img class="card-image-secondary" src="${resolveProductImage(productImages[1])}" alt="" aria-hidden="true" />` : ''}
+      ${hoverProductImage ? `<img class="card-image-secondary" src="${getValidImgSrc(hoverProductImage)}" alt="" aria-hidden="true" />` : ''}
       <div class="card-action">
         <button type="button" class="add-cart-card-btn" data-product-id="${product.id}" aria-label="Add to cart"></button>
       </div>
@@ -878,8 +889,17 @@ const createProductCard = (product) => {
   card.querySelectorAll('.card-image img').forEach((cardImage) => {
     cardImage.onerror = () => {
       cardImage.onerror = null;
-      cardImage.src = resolveProductImage(heroImageByCategory.shop);
+      cardImage.src = imageFallbackUrl;
     };
+  });
+  const primaryCardImage = card.querySelector('.card-image-primary');
+  const primaryCardSrc = getValidImgSrc(primaryProductImage);
+  const hoverCardSrc = hoverProductImage ? getValidImgSrc(hoverProductImage) : '';
+  card.addEventListener('mouseenter', () => {
+    if (hoverCardSrc && primaryCardImage) primaryCardImage.src = hoverCardSrc;
+  });
+  card.addEventListener('mouseleave', () => {
+    if (primaryCardImage) primaryCardImage.src = primaryCardSrc;
   });
 
   card.addEventListener('click', (event) => {
@@ -1753,7 +1773,7 @@ const renderDetailPage = async () => {
   };
   const renderThumbnails = () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
-    thumbs.innerHTML = displayImages.map((src, index) => `
+    thumbs.innerHTML = displayImages.slice(0, 3).map((src, index) => `
     <button type="button" class="detail-thumb${index === 0 ? ' active' : ''}" data-image-index="${index}">
       <img class="product-thumbnail" src="${imageDataUrlSanitizer(src)}" data-full-src="${imageDataUrlSanitizer(src)}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
