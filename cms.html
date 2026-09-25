@@ -114,7 +114,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsfastsave"></script>
+  <script src="assets/js/script.js?v=20260925deduplicateproducts"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -196,14 +196,15 @@
       }
     });
     const legacyDummyNames=new Set(['Merry Me','Catch 22','Saiful Malook','Iqbal','Florse','Classic Pendant','Pearl Bracelet','Golden Ring','Elegant Earrings','Minimal Chain','Training Shoes','Fitness Watch','Sports Bag','Running Set','Yoga Mat','Summer Shirt','Classic Kurta','Soft Cotton Set','Everyday Jacket','Linen Trousers','Garden Tool Set','Plant Pot','Watering Can','Garden Gloves','Pruning Shears','Merry Me','Floral Duo','Tipping Point']);
+    const dedupeProducts=products=>Array.from(new Map(products.map(product=>[product.id||product.name,product])).values());
     const defaults={announcement:'',shipping:0,products:[],reviews:[],pages:{Shop:{hero:'',banner:''},Cosmetics:{hero:'',banner:''},Jewelery:{hero:'',banner:''},Sports:{hero:'',banner:''},Cloths:{hero:'',banner:''},Gardening:{hero:'',banner:''}},shopVideos:Array.from({length:5},()=>({title:'',video:'',product:''})),categoryVideos:categories.slice(1).flatMap(category=>Array.from({length:4},(_,i)=>({category,title:`${category} video ${i+1}`,video:'',product:''})))};
-    const sanitizeCmsState=(stored)=>{const safe=stored&&typeof stored==='object'?stored:{};const cleanProducts=Array.isArray(safe.products)?safe.products.filter((product)=>product&&typeof product.name==='string'&&!legacyDummyNames.has(product.name)):[];const cleanReviews=Array.isArray(safe.reviews)?safe.reviews.filter((review)=>{const productName=String(review?.product||'');return productName && !legacyDummyNames.has(productName) && String(review?.title||'').trim() !== '';}):[];const cleanData={...defaults,...safe,products:cleanProducts,reviews:cleanReviews,pages:{...defaults.pages,...(safe.pages||{})}};Object.keys(cleanData.pages).forEach((pageKey)=>{cleanData.pages[pageKey]={...(defaults.pages[pageKey]||{}),...(safe.pages?.[pageKey]||{})};});if(cleanProducts.length===0&&cleanReviews.length===0&&(!Array.isArray(safe.products)&&!Array.isArray(safe.reviews))){return structuredClone(defaults);} return cleanData;};
+    const sanitizeCmsState=(stored)=>{const safe=stored&&typeof stored==='object'?stored:{};const cleanProducts=dedupeProducts(Array.isArray(safe.products)?safe.products.filter((product)=>product&&typeof product.name==='string'&&!legacyDummyNames.has(product.name)):[]);const cleanReviews=Array.isArray(safe.reviews)?safe.reviews.filter((review)=>{const productName=String(review?.product||'');return productName && !legacyDummyNames.has(productName) && String(review?.title||'').trim() !== '';}):[];const cleanData={...defaults,...safe,products:cleanProducts,reviews:cleanReviews,pages:{...defaults.pages,...(safe.pages||{})}};Object.keys(cleanData.pages).forEach((pageKey)=>{cleanData.pages[pageKey]={...(defaults.pages[pageKey]||{}),...(safe.pages?.[pageKey]||{})};});if(cleanProducts.length===0&&cleanReviews.length===0&&(!Array.isArray(safe.products)&&!Array.isArray(safe.reviews))){return structuredClone(defaults);} return cleanData;};
     let data=sanitizeCmsState(JSON.parse(localStorage.getItem('rak-cms-data')||'null'))||defaults; let currentPage='Shop';
     if(data.products.length===0 && data.reviews.length===0 && localStorage.getItem('rak-cms-data')){localStorage.setItem('rak-cms-data', JSON.stringify(defaults)); data=structuredClone(defaults); }
     data.announcement=typeof data.announcement==='string'?data.announcement:defaults.announcement;
     data.shipping=Number.isFinite(Number(data.shipping))?Number(data.shipping):defaults.shipping;
     data.pages=Object.fromEntries(categories.map(category=>[category,{...defaults.pages[category],...(data.pages?.[category]||{})}]));
-    data.products=Array.isArray(data.products)?data.products:[];
+    data.products=dedupeProducts(Array.isArray(data.products)?data.products:[]);
     data.reviews=Array.isArray(data.reviews)?data.reviews:[];
     data.shopVideos=Array.isArray(data.shopVideos)&&data.shopVideos.length?data.shopVideos:defaults.shopVideos;
     const oldCategoryVideos=Array.isArray(data.categoryVideos)?data.categoryVideos:[];

@@ -184,10 +184,12 @@ const fallbackProducts = [];
 
 let products = [];
 
+const dedupeProducts = (items) => Array.from(new Map(items.map((item) => [item.id || item.name, item])).values());
+
 const sanitizeStorefrontData = (stored) => {
   if (!stored || typeof stored !== 'object') return null;
   const cleanProducts = Array.isArray(stored.products)
-    ? stored.products.filter((product) => product && product.name && !legacyDummyNames.has(String(product.name)))
+    ? dedupeProducts(stored.products.filter((product) => product && product.name && !legacyDummyNames.has(String(product.name))))
     : [];
   const cleanReviews = Array.isArray(stored.reviews)
     ? stored.reviews.filter((review) => review && review.text && review.author && !legacyDummyNames.has(String(review.product || '')))
@@ -212,7 +214,7 @@ let cmsData = (() => {
 let cmsReviews = Array.isArray(cmsData?.reviews) && cmsData.reviews.length ? cmsData.reviews : [];
 
 if (cmsData?.products?.length) {
-  const cmsProducts = cmsData.products.map((product) => ({
+  const cmsProducts = dedupeProducts(cmsData.products).map((product) => ({
     ...product,
     type: product.category,
     variations: (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) =>
@@ -220,7 +222,7 @@ if (cmsData?.products?.length) {
     )
   }));
   const cmsIds = new Set(cmsProducts.map((product) => product.id));
-  products = [...products.filter((product) => !cmsIds.has(product.id)), ...cmsProducts];
+  products = dedupeProducts([...products.filter((product) => !cmsIds.has(product.id)), ...cmsProducts]);
 }
 
 const runSupabaseSimpleQuery = async (table, select, filters = []) => {
@@ -342,7 +344,7 @@ const loadSupabaseContent = async () => {
     if (reviewResult?.error) console.warn('Supabase reviews query failed; using cached content.', reviewResult.error);
     if (pageResult?.error) console.warn('Supabase pages query failed; using cached content.', pageResult.error);
 
-    const remoteProducts = normalizeProducts(productResult?.data);
+    const remoteProducts = dedupeProducts(normalizeProducts(productResult?.data));
     const remoteProductVariations = normalizeProducts(productVariationResult?.data);
     const remoteProductImages = normalizeProducts(productImageResult?.data);
     const remoteReviews = normalizeProducts(reviewResult?.data);
@@ -498,11 +500,11 @@ const loadRemoteContent = async () => {
     if (!response.ok) return false;
     const remote = await response.json();
     if (!supabaseContentLoaded && Array.isArray(remote.products)) {
-      products = normalizeProducts(remote.products.map((product) => ({
+      products = dedupeProducts(normalizeProducts(remote.products.map((product) => ({
         ...product,
         type: product.type || product.category,
         variations: (product.variations?.length ? product.variations : [{ name: 'Default', price: product.price }]).map((variation) => typeof variation === 'string' ? { name: variation, price: product.price } : variation)
-      })));
+      }))));
     }
     if (!supabaseContentLoaded && Array.isArray(remote.reviews)) cmsReviews = remote.reviews.map((review) => ({ ...review, date: review.date || review.review_date, text: review.text || review.body || review.review_text, image: review.image_path || review.review_image_path || review.image || review.image_url || '', product: review.product || review.product_name || '' }));
     if (Array.isArray(remote.videos)) {
