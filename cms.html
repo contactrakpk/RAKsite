@@ -113,7 +113,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925cmsfix2"></script>
+  <script src="assets/js/script.js?v=20260925cmsfix3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const categories=['Shop','Cosmetics','Jewelery','Sports','Cloths','Gardening'];
@@ -129,8 +129,8 @@
       }
       return window._supabase || null;
     };
-    const _supabase = ensureSupabaseClient();
-    window._supabase = _supabase;
+    window._supabase = ensureSupabaseClient();
+    const supabase = window._supabase;
     console.info('CMS Supabase project:',new URL(SUPABASE_URL).origin);
     const SUPABASE_ADMIN_EMAIL='admin@rak.com';
     const getStoredToken=()=>localStorage.getItem('rak-admin-token')||'';
