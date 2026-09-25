@@ -1610,16 +1610,25 @@ const renderDetailPage = async () => {
   const assetPrefix = window.location.pathname.includes('/pages/') ? '../' : '';
   const categoryKeyName = String(product.category || 'shop').toLowerCase();
   const fallbackImage = `${assetPrefix}${heroImageByCategory[categoryKeyName] || heroImageByCategory.shop}`;
-  const productImages = Array.isArray(product.images) && product.images.length
-    ? product.images.filter(isValidImageSource).slice(0, 4).map(resolveProductImage).filter(Boolean)
-    : [
+  const productImages = Array.isArray(product.images)
+    ? product.images.map(normalizeImageSource).filter(isValidImageSource).slice(0, 4).map(resolveProductImage).filter(Boolean)
+    : [];
+  const variationFallbackImages = (product.variation_images || product.variationImages || (product.variations || []).flatMap((variation) => typeof variation === 'string' ? [] : (variation.images || variation.variation_images || [])))
+    .map((image) => typeof image === 'string' ? image : image?.image_url || image?.url || image?.src || image?.image || '')
+    .map(normalizeImageSource)
+    .filter(isValidImageSource)
+    .slice(0, 4)
+    .map(resolveProductImage)
+    .filter(Boolean);
+  const initialGalleryImages = productImages.length ? productImages : variationFallbackImages;
+  const galleryFallbackImages = initialGalleryImages.length ? initialGalleryImages : [
         fallbackImage,
         `${assetPrefix}${heroImageByCategory.shop}`,
         `${assetPrefix}${heroImageByCategory.cosmetics}`,
         `${assetPrefix}${heroImageByCategory.jewelery}`
       ];
   let galleryImages = Array.from({ length: 4 }, (_, index) =>
-    productImages[index] || productImages[0]
+    galleryFallbackImages[index] || galleryFallbackImages[0]
   );
 
   mainImage.src = galleryImages[0];
@@ -1637,12 +1646,25 @@ const renderDetailPage = async () => {
   const serializeVariationImages = (images) => JSON.stringify(Array.isArray(images) ? images : [])
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;');
-  const getVariationGallery = (variation) => (variation?.images?.length ? variation.images : product.images || [])
-    .filter(isValidImageSource)
-    .map(resolveProductImage)
-    .filter(Boolean);
+  const getImageValue = (image) => typeof image === 'string'
+    ? image
+    : image?.image_url || image?.url || image?.src || image?.image || '';
+  const getVariationGallery = (variation) => {
+    const variationImages = variation?.images || variation?.variation_images || variation?.variationImages || [];
+    const productVariationImages = product.variation_images || product.variationImages || [];
+    const candidates = Array.isArray(variationImages) && variationImages.length
+      ? variationImages
+      : (Array.isArray(productVariationImages) && productVariationImages.length ? productVariationImages : product.images || []);
+    return candidates
+      .map(getImageValue)
+      .map(normalizeImageSource)
+      .filter(isValidImageSource)
+      .map(resolveProductImage)
+      .filter(Boolean);
+  };
   let selectedVariation = variations[0];
   galleryImages = getVariationGallery(selectedVariation);
+  mainImage.src = galleryImages[0] || fallbackImage;
   priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
   const fullDescription = product.fullDescription || product.description || '';
   const shortDescription = product.short_description || product.shortDescription || product.description || '';
@@ -1682,7 +1704,7 @@ const renderDetailPage = async () => {
     const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
     thumbs.innerHTML = displayImages.slice(1).map((src, index) => `
     <button type="button" class="detail-thumb" data-image-index="${index + 1}">
-      <img class="product-thumbnail" src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
+      <img class="product-thumbnail" src="${src}" data-full-src="${src}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
     `).join('');
     thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {
@@ -1690,7 +1712,7 @@ const renderDetailPage = async () => {
         const currentMainImage = document.getElementById('main-product-image');
         if (currentMainImage) {
           currentMainImage.style.opacity = '0.55';
-          currentMainImage.src = this.src;
+          currentMainImage.src = this.dataset.fullSrc || this.src;
           currentMainImage.addEventListener('load', () => { currentMainImage.style.opacity = '1'; }, { once: true });
         }
         thumbs.querySelectorAll('.product-thumbnail').forEach((thumb) => {
