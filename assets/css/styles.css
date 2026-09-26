@@ -4189,8 +4189,8 @@ video {
   }
 
   .category-products-slider .product-card .card-image {
-    height: 115px !important;
-    min-height: 115px !important;
+    height: 180px !important;
+    min-height: 180px !important;
   }
 
   .category-products-slider .product-card .card-image img {
@@ -4262,4 +4262,94 @@ video {
     margin: 12px 0;
     font-size: 11px;
   }
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 !important;
+  background-color: #ffffff;
+}
+
+.category-page-products .product-card .card-image,
+.trending-row .product-card .card-image,
+.related-row .product-card .card-image,
+.cart-related-row .product-card .card-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 180px !important;
+  min-height: 180px !important;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  border: 0;
+  background-color: #f8fafc;
+}
+
+.product-card .card-image img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: 0;
+  object-fit: contain !important;
+  object-position: center;
+  transform: none !important;
+}
+
+.product-card .card-info {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border-top: 1px solid #f1f5f9;
+  background-color: #f8f9fa;
+  line-height: 1.3;
+}
+
+.product-card .product-name {
+  margin: 0;
+  color: #1e293b !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.product-card .product-category {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.3;
+  text-align: left;
+  text-transform: capitalize;
+}
+
+.product-card .product-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.product-card .product-price {
+  margin: 4px 0 0;
+  color: #dc2626 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
 }

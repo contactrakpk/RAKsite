@@ -910,7 +910,7 @@ const createProductCard = (product) => {
     <div class="card-info">
       <h3 class="product-name">${productName}</h3>
       ${variations.length ? `<div class="product-badges">${variations.map((variation) => `<span>${variation}</span>`).join('')}</div>` : ''}
-      <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${compactDescription}</span></p>
+      <p class="product-type"><span class="product-category">${product.category || product.type || 'Category'}</span><span class="product-description">${compactDescription}</span></p>
       <p class="product-price">${displayPrice}</p>
     </div>
   `;
