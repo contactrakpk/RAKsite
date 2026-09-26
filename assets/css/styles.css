@@ -257,6 +257,7 @@ body, p, span, a, li, input, button, .price, .description {
 .search-icon {
   width: 18px;
   height: 18px;
+  flex: 0 0 18px;
 }
 
 .logo {
@@ -297,12 +298,16 @@ body, p, span, a, li, input, button, .price, .description {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff;
+  width: 200px;
+  max-width: 220px;
+  min-width: 0;
+  height: 40px;
+  box-sizing: border-box;
+  background: #f4f4f4;
   border: 1.5px solid #5e5d5d;
-  padding: 6px 10px;
+  padding: 6px 14px;
   border-radius: 999px;
-  min-width: 180px;
-  transition: min-width 0.3s ease, margin 0.3s ease;
+  transition: border-color 0.3s ease, margin 0.3s ease;
 }
 
 .search-box input {
@@ -311,7 +316,9 @@ body, p, span, a, li, input, button, .price, .description {
   background: transparent;
   color: #000000;
   width: 100%;
+  min-width: 0;
   font-size: 14px;
+  flex: 1 1 auto;
 }
 
 /* make svg icons inside search use black stroke/fill */
@@ -566,10 +573,6 @@ body, p, span, a, li, input, button, .price, .description {
   padding-right: 22px;
 }
 
-.site-header.is-categories-compact .search-box {
-  min-width: 200px;
-}
-
 /* when user opens categories from compact state, show category bar as overlay */
 .site-header.is-categories-compact.categories-open .category-bar {
   max-height: 220px;
@@ -622,7 +625,9 @@ body, p, span, a, li, input, button, .price, .description {
   }
 
   .search-box {
-    min-width: 100%;
+    width: 200px;
+    max-width: 220px;
+    min-width: 0;
   }
 
   .category-bar {
@@ -3244,10 +3249,10 @@ video {
 
   .search-box {
     order: 2;
-    flex: 1 1 auto;
+    flex: 0 1 200px;
     min-width: 0;
-    width: 100%;
-    max-width: none;
+    width: 200px;
+    max-width: 220px;
   }
 
   .nav-right .cart-img {
