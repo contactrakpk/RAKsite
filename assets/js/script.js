@@ -709,7 +709,7 @@ const renderWhatsAppButton = () => {
 
   const updateHeaderState = () => {
     const scrollY = window.scrollY;
-    const compact = scrollY > 10;
+    const compact = scrollY > 80;
     header.classList.toggle('is-categories-compact', compact);
 
     if (!compact && header.classList.contains('categories-open')) {

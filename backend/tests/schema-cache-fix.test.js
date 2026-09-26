@@ -12,8 +12,8 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
   const configJs = await read('assets/js/config.js');
   const scriptJs = await read('assets/js/script.js');
 
-  assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926sliderandfeatured/);
-  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926cardlayoutfix/);
+  assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926mobilelayoutfix/);
+  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926mobilelayoutfix/);
   assert.match(indexHtml, /<svg viewBox="0 0 24 24" width="16" height="16" class="search-icon">/);
   assert.match(await read('assets/css/styles.css'), /\.search-box \{[\s\S]*?width: 100%;[\s\S]*?max-width: 180px;[\s\S]*?height: 36px;[\s\S]*?overflow: hidden;/);
   assert.match(await read('assets/css/styles.css'), /\.search-icon \{[\s\S]*?width: 16px !important;[\s\S]*?height: 16px !important;[\s\S]*?min-width: 16px !important;[\s\S]*?max-width: 16px !important;[\s\S]*?flex-shrink: 0;/);
@@ -47,6 +47,7 @@ test('featured products are persisted and rendered in category sliders', async (
   assert.match(cmsHtml, /is_featured:product\.is_featured===true/);
   assert.match(schemaSql, /ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE/);
   assert.match(scriptJs, /product\.is_featured === true/);
+  assert.match(scriptJs, /const compact = scrollY > 80/);
   assert.match(scriptJs, /\.slice\(0, 6\)/);
   assert.match(scriptJs, /className = 'trending-row category-products-slider'/);
   assert.match(scriptJs, /className = 'category-products-view-all view-all-card'/);
@@ -58,4 +59,7 @@ test('featured products are persisted and rendered in category sliders', async (
   assert.match(stylesCss, /\.category-products-slider \.product-card \.product-price \{[\s\S]*?font-size: 13px !important/);
   assert.match(scriptJs, /className = 'category-products-view-all view-all-card'/);
   assert.match(stylesCss, /\.category-products-slider \.view-all-card \{[\s\S]*?flex: 0 0 120px !important;[\s\S]*?min-width: 120px !important;[\s\S]*?background: rgba\(0, 0, 0, 0\.04\);[\s\S]*?backdrop-filter: blur\(6px\);/);
+  assert.match(stylesCss, /\.site-header \.navbar \{[\s\S]*?width: 90% !important;[\s\S]*?max-width: 90% !important;[\s\S]*?margin-left: auto !important;/);
+  assert.match(stylesCss, /\.site-header\.is-categories-compact \.category-inline-toggle \{[\s\S]*?opacity: 1;[\s\S]*?transform: translateX\(0\);/);
+  assert.match(stylesCss, /\.category-products-slider \.product-card \.card-image,[\s\S]*?height: auto !important;[\s\S]*?aspect-ratio: 1 \/ 1;[\s\S]*?min-height: 120px !important;[\s\S]*?max-height: 160px !important;/);
 });

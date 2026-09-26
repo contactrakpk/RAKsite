@@ -4353,3 +4353,96 @@ video {
   font-size: 13px !important;
   font-weight: 700 !important;
 }
+
+@media (max-width: 768px) {
+  .site-header .navbar {
+    width: 90% !important;
+    max-width: 90% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .site-header .nav-left {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 0;
+  }
+
+  .site-header .category-inline-toggle {
+    display: flex;
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    height: 40px;
+    padding: 0;
+    overflow: hidden;
+    border-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+
+  .site-header.is-categories-compact .category-inline-toggle {
+    display: flex;
+    flex: 0 0 40px;
+    width: 40px;
+    min-width: 40px;
+    border-width: 1px;
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .site-header.is-categories-compact .nav-left {
+    gap: 10px;
+  }
+
+  .site-header .nav-left .search-box {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    transition: all 0.3s ease;
+  }
+
+  .site-header:not(.is-categories-compact) .nav-left .search-box {
+    flex: 0 1 100%;
+  }
+
+  .site-header.is-categories-compact .nav-left .search-box {
+    flex: 0 1 calc(100% - 50px);
+  }
+
+  .category-page-products .product-card .card-image,
+  .category-products-slider .product-card .card-image,
+  .related-row .product-card .card-image,
+  .cart-related-row .product-card .card-image {
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    min-height: 120px !important;
+    max-height: 160px !important;
+  }
+
+  .category-page-products .product-card .card-image img,
+  .category-products-slider .product-card .card-image img,
+  .related-row .product-card .card-image img,
+  .cart-related-row .product-card .card-image img {
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 160px !important;
+    object-fit: contain !important;
+  }
+
+  .category-page-products .product-card .card-image .card-image-secondary,
+  .category-products-slider .product-card .card-image .card-image-secondary,
+  .related-row .product-card .card-image .card-image-secondary,
+  .cart-related-row .product-card .card-image .card-image-secondary {
+    display: none;
+  }
+}
