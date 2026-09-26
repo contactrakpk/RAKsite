@@ -1000,7 +1000,7 @@ const renderTrendingProducts = () => {
     row.className = 'trending-row category-products-slider';
     categoryProducts.forEach((product) => row.appendChild(createProductCard(product)));
     const viewAllCard = document.createElement('a');
-    viewAllCard.className = 'category-products-view-all';
+    viewAllCard.className = 'category-products-view-all view-all-card';
     viewAllCard.href = href;
     viewAllCard.setAttribute('aria-label', `View all ${label.toLowerCase()} products`);
     viewAllCard.textContent = 'View All →';
