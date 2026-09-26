@@ -1335,11 +1335,21 @@ const showCartNotification = () => {
 const addToCart = (productId, quantity) => {
   const product = products.find((item) => sameProductId(item.id, productId));
   if (!product) return;
+  const variations = Array.isArray(product.variations) ? product.variations : [];
+  const productPriceCents = Math.round(Number(product.price) * 100);
+  const selectedVariation = variations.find((variation) => {
+    const price = getVariationPriceValue(typeof variation === 'string' ? { price: product.price } : variation);
+    return Math.round(price * 100) === productPriceCents;
+  }) || variations[0];
+  const variationName = typeof selectedVariation === 'string' ? selectedVariation : selectedVariation?.name || '';
+  const variationPrice = selectedVariation
+    ? getVariationPriceValue(typeof selectedVariation === 'string' ? { price: product.price } : selectedVariation)
+    : Number(product.price) || 0;
   const existing = cartState.items.find((item) => sameProductId(item.id, product.id));
   if (existing) {
     existing.quantity += quantity;
   } else {
-    cartState.items.push({ ...product, quantity });
+    cartState.items.push({ ...product, selectedVariation: variationName, price: variationPrice, quantity });
   }
   saveCart();
   updateCartUI();
@@ -1508,7 +1518,8 @@ const renderCheckoutPage = () => {
   }
 
   const assetPrefix = '../';
-  const subtotal = cartState.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const subtotalCents = cartState.items.reduce((sum, item) => sum + Math.round(Number(item.price) * 100) * Number(item.quantity), 0);
+  const subtotal = subtotalCents / 100;
   itemsContainer.innerHTML = cartState.items.map((item) => {
     const itemCategory = categoryMeta.find((category) => category.label === item.category);
     const image = item.images?.[0] || `${assetPrefix}${itemCategory?.banner || heroImageByCategory.shop}`;
@@ -1532,6 +1543,15 @@ const renderCheckoutPage = () => {
     const phone = String(formData.get('phone') || '').trim();
     const email = String(formData.get('email') || '').trim();
     if (!/^\d{11}$/.test(phone) || !/^[^\s@]+@gmail\.com$/i.test(email)) return;
+    const requestedItems = cartState.items.map((item) => {
+      const quantity = Number(item.quantity);
+      const productId = String(item.id || '').split('::')[0];
+      return { productId, variation: String(item.selectedVariation || ''), quantity };
+    });
+    if (requestedItems.some((item) => !item.productId || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
+      window.alert('Your cart contains an invalid product or quantity. Refresh the cart and try again.');
+      return;
+    }
     form.dataset.orderSubmitting = 'true';
     const submitButton = document.querySelector('.checkout-submit');
     if (submitButton) submitButton.disabled = true;
@@ -1544,25 +1564,23 @@ const renderCheckoutPage = () => {
       total: subtotal + cartState.shipping
     };
     try {
+      if (!API_URL) throw new Error('The order service is not configured. Please try again later.');
       const customer = order.customer;
-      const { data: savedRows, error } = await _supabase.from('orders').insert({
-        order_number: order.id,
-        customer_name: customer.name,
-        customer_email: customer.email,
-        customer_phone: customer.phone,
-        address: customer.address,
-        area: customer.area || '',
-        city: customer.city,
-        notes: customer.notes || '',
-        payment_method: customer.payment || 'Cash on Delivery',
-        items: order.items,
-        shipping: order.shipping,
-        total: order.total,
-        status: 'new'
-      }).select('order_number,created_at');
-      if (error) throw error;
-      const savedRow = savedRows?.[0];
-      const savedOrder = { ...order, id: savedRow?.order_number || order.id, createdAt: savedRow?.created_at || order.createdAt };
+      const response = await fetch(`${API_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer, items: requestedItems })
+      });
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(responseBody.error || 'The order could not be submitted. Please try again.');
+      const savedOrder = {
+        ...order,
+        id: responseBody.order_number || order.id,
+        createdAt: responseBody.created_at || order.createdAt,
+        items: Array.isArray(responseBody.items) ? responseBody.items : order.items,
+        shipping: Number(responseBody.shipping ?? order.shipping),
+        total: Number(responseBody.total ?? order.total)
+      };
       const existingOrders = JSON.parse(localStorage.getItem('akWebOrders') || '[]');
       existingOrders.unshift(savedOrder);
       localStorage.setItem('akWebOrders', JSON.stringify(existingOrders));

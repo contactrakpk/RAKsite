@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
@@ -25,7 +26,18 @@ if (!jwtSecret || jwtSecret.length < 32) throw new Error('JWT_SECRET must be at 
 
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = new Set([
+  'https://raksite.pages.dev',
+  ...String(process.env.CORS_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean)
+]);
+const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin) || localOriginPattern.test(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '25mb' }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
 
@@ -40,14 +52,7 @@ const requireAuth = (request, response, next) => {
   }
 };
 
-app.get('/health', asyncHandler(async (_request, response) => {
-  try {
-    await pool.query('SELECT 1');
-    response.json({ ok: true, service: 'rak-commerce-api' });
-  } catch {
-    response.status(503).json({ ok: false, error: 'Database unavailable' });
-  }
-}));
+app.get('/health', (_request, response) => response.json({ ok: true, service: 'RAK API' }));
 
 app.post('/api/auth/login', rateLimit({ windowMs: 10 * 60 * 1000, limit: 10 }), asyncHandler(async (request, response) => {
   const { email, password } = request.body || {};
@@ -60,16 +65,8 @@ app.post('/api/auth/login', rateLimit({ windowMs: 10 * 60 * 1000, limit: 10 }), 
 }));
 
 app.get('/api/content', async (request, response) => {
-  const fallbackPayload = {
-    products: [],
-    pages: {},
-    videos: [],
-    reviews: [],
-    settings: {}
-  };
-
   try {
-    const results = await Promise.allSettled([
+    const [productsResult, imagesResult, variationsResult, variationImagesResult, pagesResult, videosResult, reviewsResult, settingsResult] = await Promise.all([
       pool.query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC"),
       pool.query('SELECT * FROM product_images ORDER BY sort_order'),
       pool.query('SELECT * FROM product_variations ORDER BY sort_order'),
@@ -79,9 +76,6 @@ app.get('/api/content', async (request, response) => {
       pool.query("SELECT * FROM reviews WHERE status = 'published' ORDER BY review_date DESC"),
       pool.query('SELECT key, value FROM settings')
     ]);
-
-    const [productsResult, imagesResult, variationsResult, variationImagesResult, pagesResult, videosResult, reviewsResult, settingsResult] = results.map((result) => result.status === 'fulfilled' ? result.value : { rows: [] });
-
     const products = productsResult?.rows || [];
     const images = imagesResult?.rows || [];
     const variations = variationsResult?.rows || [];
@@ -109,6 +103,8 @@ app.get('/api/content', async (request, response) => {
       type: product.category,
       description: product.short_description,
       fullDescription: product.description,
+      is_featured: product.is_featured === true,
+      status: product.status,
       variations: (variationMap[product.id] || []).map((variation) => ({
         ...variation,
         images: variationImageMap[product.id]?.[variation.name] || []
@@ -128,17 +124,88 @@ app.get('/api/content', async (request, response) => {
     });
   } catch (error) {
     console.error('Failed to load storefront content:', error);
-    return response.status(200).json(fallbackPayload);
+    return response.status(503).json({ error: 'Storefront content is temporarily unavailable.' });
   }
 });
 
+export const calculateOrderQuote = (requestedItems, products, shipping) => {
+  const productsById = new Map(products.map((product) => [String(product.id), product]));
+  const errorResponse = (message) => Object.assign(new Error(message), { statusCode: 400 });
+  const pricedItems = [];
+  let subtotalCents = 0;
+
+  for (const requestedItem of requestedItems) {
+    const quantity = Number(requestedItem.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 50) {
+      throw errorResponse('Product quantities must be whole numbers between 1 and 50.');
+    }
+
+    const product = productsById.get(String(requestedItem.productId));
+    if (!product) throw errorResponse('One or more products are unavailable. Refresh your cart and try again.');
+    const variations = Array.isArray(product.variations) ? product.variations : [];
+    const variation = requestedItem.variation
+      ? variations.find((item) => item.name === requestedItem.variation)
+      : variations[0];
+    if (!variation) throw errorResponse('A selected product variation is unavailable. Refresh your cart and try again.');
+
+    const price = Number(variation.price);
+    if (!Number.isFinite(price) || price < 0) throw errorResponse('A product has an invalid price.');
+    const unitPriceCents = Math.round(price * 100);
+    subtotalCents += unitPriceCents * quantity;
+    if (!Number.isSafeInteger(subtotalCents)) throw errorResponse('The cart total is invalid.');
+    pricedItems.push({
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      type: product.category,
+      selectedVariation: variation.name,
+      price: unitPriceCents / 100,
+      quantity,
+      images: product.images || []
+    });
+  }
+
+  const shippingCents = Math.round(Number(shipping) * 100);
+  if (!Number.isSafeInteger(shippingCents) || shippingCents < 0) throw errorResponse('The configured shipping fee is invalid.');
+  const totalCents = subtotalCents + shippingCents;
+  if (!Number.isSafeInteger(totalCents)) throw errorResponse('The cart total is invalid.');
+  return {
+    items: pricedItems,
+    shipping: shippingCents / 100,
+    total: totalCents / 100
+  };
+};
+
 app.post('/api/orders', asyncHandler(async (request, response) => {
-  const { id, customer, items, shipping, total } = request.body || {};
+  const { customer, items } = request.body || {};
   if (!customer?.name || !customer?.email || !customer?.phone || !customer?.address || !customer?.city || !Array.isArray(items) || !items.length) return response.status(400).json({ error: 'Customer email, phone, address, city, and items are required' });
   if (!/^\d{11}$/.test(String(customer.phone).trim())) return response.status(400).json({ error: 'Phone number must contain exactly 11 digits' });
   if (!/^[^\s@]+@gmail\.com$/i.test(String(customer.email).trim())) return response.status(400).json({ error: 'Email must end with @gmail.com' });
-  const orderNumber = String(id || `RAK-${Date.now()}`).slice(0, 80);
-  const result = await pool.query(`INSERT INTO orders(order_number, customer_name, customer_email, customer_phone, address, area, city, notes, payment_method, items, shipping, total) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING order_number, created_at`, [orderNumber, customer.name, customer.email, customer.phone, customer.address, customer.area || '', customer.city, customer.notes || '', customer.payment || 'Cash on Delivery', JSON.stringify(items), Number(shipping) || 0, Number(total) || 0]);
+  const requestedItems = items.map((item) => ({
+    productId: String(item?.productId || ''),
+    variation: String(item?.variation || ''),
+    quantity: item?.quantity
+  }));
+  const invalidProductId = requestedItems.some((item) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.productId));
+  if (invalidProductId) return response.status(400).json({ error: 'One or more products are invalid. Refresh your cart and try again.' });
+
+  const productIds = [...new Set(requestedItems.map((item) => item.productId))];
+  const [productResult, variationResult, imageResult, shippingResult] = await Promise.all([
+    pool.query("SELECT id, name, category, status FROM products WHERE id = ANY($1::uuid[]) AND status = 'published'", [productIds]),
+    pool.query('SELECT product_id, name, price FROM product_variations WHERE product_id = ANY($1::uuid[]) ORDER BY sort_order', [productIds]),
+    pool.query('SELECT product_id, image_url FROM product_images WHERE product_id = ANY($1::uuid[]) ORDER BY sort_order', [productIds]),
+    pool.query("SELECT value FROM settings WHERE key = 'shipping_cost'")
+  ]);
+  const productsById = new Map(productResult.rows.map((product) => [String(product.id), { ...product, variations: [], images: [] }]));
+  variationResult.rows.forEach((variation) => productsById.get(String(variation.product_id))?.variations.push(variation));
+  imageResult.rows.forEach((image) => productsById.get(String(image.product_id))?.images.push(image.image_url));
+  const shipping = Number(shippingResult.rows[0]?.value ?? 180);
+  const quote = calculateOrderQuote(requestedItems, [...productsById.values()], shipping);
+  const orderNumber = `RAK-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+  const cleanCustomer = Object.fromEntries(['name', 'email', 'phone', 'address', 'area', 'city', 'notes', 'payment'].map((key) => [key, String(customer[key] || '').trim()]));
+  if (!cleanCustomer.name || !cleanCustomer.address || !cleanCustomer.city) return response.status(400).json({ error: 'Customer name, address, and city are required.' });
+  const result = await pool.query(`INSERT INTO orders(order_number, customer_name, customer_email, customer_phone, address, area, city, notes, payment_method, items, shipping, total) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING order_number, created_at, items, shipping, total`, [orderNumber, cleanCustomer.name, cleanCustomer.email, cleanCustomer.phone, cleanCustomer.address, cleanCustomer.area, cleanCustomer.city, cleanCustomer.notes, cleanCustomer.payment || 'Cash on Delivery', JSON.stringify(quote.items), quote.shipping, quote.total]);
   response.status(201).json(result.rows[0]);
 }));
 
@@ -268,10 +335,13 @@ app.put('/api/admin/settings/:key', asyncHandler(async (request, response) => {
 
 app.use((error, _request, response, _next) => {
   console.error(error);
-  response.status(500).json({ error: 'Internal server error' });
+  const status = Number(error.statusCode || error.status);
+  response.status(status >= 400 && status < 500 ? status : 500).json({
+    error: status >= 400 && status < 500 ? error.message : 'Internal server error'
+  });
 });
 
-export { app };
+export { app, pool };
 
 if (isDirectRun) {
   app.listen(port, () => console.log(`RAK API listening on port ${port}`));

@@ -205,7 +205,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260926procmstable"></script>
+  <script src="assets/js/script.js?v=20260926secureorders"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -215,11 +215,17 @@
 
       window._supabase = window.supabase || window._supabase || null;
       function getCmsSupabase() {
+        if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+          window._globalSupabaseInstance = window.supabaseClient;
+          return window.supabaseClient;
+        }
         if (window._globalSupabaseInstance && typeof window._globalSupabaseInstance.from === 'function') {
+          window.supabaseClient = window._globalSupabaseInstance;
           return window._globalSupabaseInstance;
         }
         if (window.supabase && typeof window.supabase.from === 'function') {
           window._globalSupabaseInstance = window.supabase;
+          window.supabaseClient = window.supabase;
           return window.supabase;
         }
 
@@ -228,6 +234,7 @@
         const lib = window.supabase || window.supabaseClient || null;
         if (lib && typeof lib.createClient === 'function') {
           window._globalSupabaseInstance = lib.createClient(url, key);
+          window.supabaseClient = window._globalSupabaseInstance;
           window.supabase = window._globalSupabaseInstance;
           return window._globalSupabaseInstance;
         }
@@ -792,6 +799,12 @@
     function renderAll(){renderOverview();renderOrders();renderProducts();renderPages();renderVideos();renderReviews();$('#shipping').value=data.shipping;repairMojibake()}
     const titles={overview:['Overview','A clear view of your store content and publishing workflow.'],orders:['Orders','Review customer details and manage incoming orders.'],products:['Products','Build the catalog your customers shop from.'],pages:['Pages & media','Control every hero image and banner across the storefront.'],videos:['Video library','Upload, organize and connect your commerce videos.'],reviews:['Reviews','Keep your customer proof current and credible.'],settings:['Settings','Global store messaging, shipping and publishing tools.']};
     $$('.nav-item').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.view;$$('.nav-item').forEach(x=>x.classList.toggle('active',x===btn));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));$('#viewTitle').textContent=titles[id][0];$('#viewSubtitle').textContent=titles[id][1];if(id==='orders')renderOrders();window.scrollTo(0,0)});$$('[data-open]').forEach(b=>b.onclick=()=>{const target=b.dataset.open;document.querySelector(`[data-view="${target}"]`).click()});$('#addProductBtn').onclick=()=>openProduct();$('#addReviewBtn').onclick=()=>openReview();$('#closeModal').onclick=()=>$('#modalBackdrop').classList.remove('open');$('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')e.currentTarget.classList.remove('open')};$('#settingsForm').onsubmit=async e=>{e.preventDefault();data.announcement=$('#announcement').value;data.shipping=Number($('#shipping').value);try{await persistSettings();localStorage.setItem('rak-cms-data',JSON.stringify(data));showToast('Settings saved to Supabase');renderOverview()}catch(error){console.error(error);showToast(`Could not save settings: ${error.message||'check permissions'}`)}};$('#previewBtn').onclick=()=>window.open('index.html','_blank');$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rak-cms-content.json';a.click()};
+    document.querySelector('.nav-item[data-view="products"]')?.addEventListener('click',()=>{
+      loadRemoteProducts().then(renderProducts).catch(error=>{
+        console.warn('Could not refresh CMS products',error);
+        showToast('Could not refresh products from Supabase');
+      });
+    });
     $('#settingsForm').onsubmit=async event=>{
       event.preventDefault();
       data.shipping=Number($('#shipping').value);
@@ -805,7 +818,60 @@
         showToast(`Could not save settings: ${error.message||'check permissions'}`);
       }
     };
+    async function loadRemoteProducts(){
+      const client=window.supabaseClient||getCmsSupabase();
+      if(!client||typeof client.from!=='function')throw new Error('Supabase client unavailable');
+      const readRows=async table=>{
+        const {data:rows,error}=await client.from(table).select('*');
+        if(error)throw error;
+        return Array.isArray(rows)?rows:[];
+      };
+      const [productRows,imageRows,variationRows,variationImageRows]=await Promise.all([
+        readRows('products'),
+        readRows('product_images'),
+        readRows('product_variations'),
+        readRows('product_variation_images')
+      ]);
+      const imagesByProduct=new Map();
+      imageRows.forEach(image=>{
+        const productId=String(image.product_id);
+        if(!imagesByProduct.has(productId))imagesByProduct.set(productId,[]);
+        imagesByProduct.get(productId).push({sortOrder:Number(image.sort_order)||0,url:image.image_url||image.url||''});
+      });
+      const variationImagesByKey=new Map();
+      variationImageRows.forEach(image=>{
+        const key=`${image.product_id}::${image.variation_name}`;
+        if(!variationImagesByKey.has(key))variationImagesByKey.set(key,[]);
+        variationImagesByKey.get(key).push({sortOrder:Number(image.sort_order)||0,url:image.image_url||image.url||''});
+      });
+      const variationsByProduct=new Map();
+      variationRows.forEach(variation=>{
+        const productId=String(variation.product_id);
+        if(!variationsByProduct.has(productId))variationsByProduct.set(productId,[]);
+        const variationImages=variationImagesByKey.get(`${productId}::${variation.name}`)||[];
+        variationsByProduct.get(productId).push({
+          ...variation,
+          price:Number(variation.price)||0,
+          images:variationImages.sort((a,b)=>a.sortOrder-b.sortOrder).map(image=>image.url)
+        });
+      });
+      const remoteProducts=productRows.map(product=>{
+        const productVariations=(variationsByProduct.get(String(product.id))||[]).sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+        return {
+          ...product,
+          description:product.short_description||product.description||'',
+          fullDescription:product.description||product.short_description||'',
+          price:Number(productVariations[0]?.price)||0,
+          images:(imagesByProduct.get(String(product.id))||[]).sort((a,b)=>a.sortOrder-b.sortOrder).map(image=>image.url),
+          variations:productVariations
+        };
+      });
+      data.products=dedupeProducts(remoteProducts);
+      localStorage.setItem('rak-cms-data',JSON.stringify(data));
+      return data.products;
+    }
     async function loadRemoteCmsData(){
+      await loadRemoteProducts();
       let pages = [];
       let reviews = [];
 

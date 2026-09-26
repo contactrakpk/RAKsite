@@ -60,6 +60,30 @@ CREATE TABLE IF NOT EXISTS product_variation_images (
 ALTER TABLE product_variation_images
   ADD COLUMN IF NOT EXISTS variation_id UUID REFERENCES product_variations(id) ON DELETE CASCADE;
 
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS products_public_read ON products;
+CREATE POLICY products_public_read ON products FOR SELECT TO anon, authenticated USING (status = 'published');
+DROP POLICY IF EXISTS products_admin_write ON products;
+CREATE POLICY products_admin_write ON products FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE product_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS product_images_public_read ON product_images;
+CREATE POLICY product_images_public_read ON product_images FOR SELECT TO anon, authenticated USING (EXISTS (SELECT 1 FROM products WHERE products.id = product_images.product_id AND products.status = 'published'));
+DROP POLICY IF EXISTS product_images_admin_write ON product_images;
+CREATE POLICY product_images_admin_write ON product_images FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE product_variations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS product_variations_public_read ON product_variations;
+CREATE POLICY product_variations_public_read ON product_variations FOR SELECT TO anon, authenticated USING (EXISTS (SELECT 1 FROM products WHERE products.id = product_variations.product_id AND products.status = 'published'));
+DROP POLICY IF EXISTS product_variations_admin_write ON product_variations;
+CREATE POLICY product_variations_admin_write ON product_variations FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE product_variation_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS product_variation_images_public_read ON product_variation_images;
+CREATE POLICY product_variation_images_public_read ON product_variation_images FOR SELECT TO anon, authenticated USING (EXISTS (SELECT 1 FROM products WHERE products.id = product_variation_images.product_id AND products.status = 'published'));
+DROP POLICY IF EXISTS product_variation_images_admin_write ON product_variation_images;
+CREATE POLICY product_variation_images_admin_write ON product_variation_images FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 CREATE TABLE IF NOT EXISTS videos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   page_slug TEXT NOT NULL,
@@ -132,7 +156,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS orders_public_insert ON orders;
-CREATE POLICY orders_public_insert ON orders FOR INSERT TO anon, authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS orders_authenticated_select ON orders;
 CREATE POLICY orders_authenticated_select ON orders FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS orders_authenticated_update ON orders;
