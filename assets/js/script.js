@@ -1748,6 +1748,14 @@ const renderDetailPage = async () => {
   const getImageValue = (image) => typeof image === 'string'
     ? image
     : image?.image_url || image?.url || image?.src || image?.image || '';
+  const getValidImage = (imgSrc) => {
+    if (!imgSrc || typeof imgSrc !== 'string') return 'assets/images/placeholder.svg';
+    let clean = imgSrc.replace(/:[0-9]+$/g, '').trim();
+    const lastDataImage = clean.lastIndexOf('data:image/');
+    if (lastDataImage > 0) clean = clean.substring(lastDataImage);
+    if (/^(?:data:image\/|https?:\/\/|blob:|\/|(?:\.\.\/|\.\/)?assets\/)/i.test(clean)) return clean;
+    return `data:image/jpeg;base64,${clean}`;
+  };
   const getVariationGallery = (variation) => {
     const variationImages = [variation?.image_url, variation?.image, ...(variation?.images || []), ...(variation?.variation_images || []), ...(variation?.variationImages || [])].filter(Boolean);
     const productVariationImages = product.variation_images || product.variationImages || [];
@@ -1756,6 +1764,7 @@ const renderDetailPage = async () => {
       : (Array.isArray(productVariationImages) && productVariationImages.length ? productVariationImages : product.images || []);
     return candidates
       .map(getImageValue)
+      .map(getValidImage)
       .map(normalizeImageSource)
       .filter(isValidImageSource)
       .map(resolveProductImage)
@@ -1794,16 +1803,16 @@ const renderDetailPage = async () => {
     galleryImages = getVariationGallery(selectedVariation);
     variationsEl.querySelectorAll('.variation-pill').forEach((pill) => pill.classList.toggle('active', pill === button));
     priceEl.textContent = `PKR ${Number(selectedVariation.price).toLocaleString()}`;
-    const primary = galleryImages[0] || product.images?.[0] || fallbackImage;
+    const primary = getValidImage(galleryImages[0] || product.images?.[0] || fallbackImage);
     mainImage.src = getValidImgSrc(primary);
     mainImage.alt = `${product.name} - ${selectedVariation.name}`;
     renderThumbnails();
   };
   const renderThumbnails = () => {
-    const displayImages = galleryImages.length ? galleryImages : product.images || [fallbackImage];
+    const displayImages = (galleryImages.length ? galleryImages : product.images || [fallbackImage]).map(getValidImage);
     thumbs.innerHTML = displayImages.slice(0, 3).map((src, index) => `
     <button type="button" class="detail-thumb${index === 0 ? ' active' : ''}" data-image-index="${index}">
-      <img class="product-thumbnail" src="${imageDataUrlSanitizer(src)}" data-full-src="${imageDataUrlSanitizer(src)}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
+      <img class="product-thumbnail" src="${getValidImgSrc(src)}" data-full-src="${getValidImgSrc(src)}" alt="${product.name} preview" onerror="this.onerror=null;this.src='${imageFallbackUrl}'" />
     </button>
     `).join('');
     thumbs.querySelectorAll('.product-thumbnail').forEach((thumbnail) => {

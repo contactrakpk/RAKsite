@@ -119,7 +119,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260925variationsfix"></script>
+  <script src="assets/js/script.js?v=20260926permanentvarfix"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -220,7 +220,6 @@
     const persistProduct=async product=>{
       const client=getCmsSupabase();
       if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
-      const cleanVariationImageArray=(images)=>{const values=Array.isArray(images)?images:(images?[images]:[]);return [...new Set(values.map((image)=>String(image||'').trim()).filter((image)=>image&&(image.match(/data:image\//gi)||[]).length<=1).map(formatVariationImageDataUrl).filter(Boolean))];};
       product.variations=(Array.isArray(product.variations)?product.variations:[]).map((variation)=>typeof variation==='string'?{name:variation,images:[]}:({...variation,images:cleanVariationImageArray(variation.images||variation.variation_images)}));
       product.variation_images=cleanVariationImageArray(product.variation_images);
       const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),status:'published'};
@@ -501,11 +500,13 @@
     const fileToDataUrl=(file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const source=sanitizeCmsImageSource(reader.result);if(!source)return resolve('');const image=new Image();image.onload=()=>{const maxSize=1400;const scale=Math.min(1,maxSize/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(sanitizeCmsImageSource(canvas.toDataURL('image/jpeg',.82))||source)};image.onerror=()=>resolve(source);image.src=source};reader.onerror=reject;reader.readAsDataURL(file)});
     const fileFields='<div class=\"field full\"><label>Product images (optional)</label><input name=\"images\" type=\"file\" accept=\"image/*\" multiple><small style=\"color:var(--muted)\">Optional: upload four general images. If left blank, the first variation images will be used.</small></div><div class=\"field full\"><label>Image paths (optional)</label><input name=\"imagePaths\" placeholder=\"image-1.jpg, image-2.jpg, image-3.jpg, image-4.jpg\"></div>';
     const bindVariationRemove=()=>{$$('#variationRows .remove-variation').forEach((button)=>{button.onclick=()=>{const rows=$$('#variationRows .variation-editor-row');if(rows.length>1){button.closest('.variation-editor-row')?.remove();}};});};
-    const appendVariationImage=(existing,newImage)=>Array.isArray(existing)?[...existing,newImage]:[newImage];
-    const bindVariationImageRemove=()=>{$$('#variationRows .remove-variation-image').forEach((button)=>{button.onclick=()=>{const stack=button.closest('.variation-image-stack');const pathInput=stack?.querySelector('input[name="variationImagePaths"]');const imageIndex=Number(button.dataset.imageIndex);if(pathInput){const values=String(pathInput.value||'').split(', ').filter(Boolean);values.splice(imageIndex,1);pathInput.value=values.join(', ');}button.closest('.variation-image-chip')?.remove();};});};
+    const cleanVariationImageArray=(images)=>{const values=Array.isArray(images)?images:(images?[images]:[]);const splitImageValue=(value)=>{const source=String(value||'').replace(/:[0-9]+$/g,'').trim();if(!source)return[];const dataStarts=[...source.matchAll(/data:image\//gi)].map((match)=>match.index);if(dataStarts.length>1)return dataStarts.map((start,index)=>source.slice(start,dataStarts[index+1]??source.length));const jpegStarts=[...source.matchAll(/\/9j\//gi)].map((match)=>match.index);if(jpegStarts.length>1){const header=source.match(/^data:image\/(?:jpeg|jpg);base64,/i)?.[0]||'';return jpegStarts.map((start,index)=>source.slice(start,jpegStarts[index+1]??source.length)).map((image,index)=>index===0&&header?header+image:image);}return[source];};return [...new Set(values.flatMap(splitImageValue).map(formatVariationImageDataUrl).filter((image)=>image&&isValidCmsImage(image)))];};
+    const variationPathValues=(value)=>String(value||'').split(',').map((item)=>item.trim()).filter((item)=>item&&!/^data:image\//i.test(item)&&!/^\/?9j\//i.test(item)&&!(item.length>80&&/^[A-Za-z0-9+/_=-]+$/.test(item)));
+    const bindVariationPathField=(row)=>{const input=row.querySelector('input[name="variationImagePaths"]');if(input)input.addEventListener('input',()=>{const value=String(input.value||'').trim();if(/data:image\//i.test(value)||/\/9j\//i.test(value)||value.split(',').some((item)=>item.trim().length>80&&/^[A-Za-z0-9+/_=-]+$/.test(item.trim())))input.value='';});};
+    const bindVariationImageRemove=()=>{$$('#variationRows .remove-variation-image').forEach((button)=>{button.onclick=()=>{const row=button.closest('.variation-editor-row');const pathInput=row?.querySelector('input[name="variationImagePaths"]');const imageIndex=Number(button.dataset.imageIndex);const images=row?._variation?.images||[];if(imageIndex<images.length)images.splice(imageIndex,1);else if(pathInput){const values=variationPathValues(pathInput.value);values.splice(imageIndex-images.length,1);pathInput.value=values.join(', ');}button.closest('.variation-image-chip')?.remove();};});};
     function openProduct(index=null){
       const p=index===null?{name:'',category:'Cosmetics',description:'',variations:[{name:'',price:'',images:[]}],price:'',images:[]}:data.products[index];
-      const variations=(p.variations&&p.variations.length?p.variations:[{name:p.variation||'Default',price:p.price,images:[]}]).map((v)=>typeof v==='string'?{name:v,price:p.price,images:[]}:v);
+      const variations=(p.variations&&p.variations.length?p.variations:[{name:p.variation||'Default',price:p.price,images:[]}]).map((v)=>typeof v==='string'?{name:v,price:p.price,images:[]}:{...v,images:cleanVariationImageArray(v.images||v.variation_images)});
       const categoryOptions=categories.slice(1).map((c)=>'<option '+(c===p.category?'selected':'')+'>'+c+'</option>').join('');
       const variationRows=variations.map((v,variationIndex)=>{
         const preview=(v.images||[]).map((src,imageIndex)=>({src,imageIndex})).filter(({src})=>isValidCmsImage(src)).map(({src,imageIndex})=>'<span class="variation-image-chip" style="position:relative;display:inline-flex"><img src="'+esc(getValidImgSrc(src))+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block"><button type="button" class="remove-variation-image" data-image-index="'+imageIndex+'" title="Remove image" style="position:absolute;top:-7px;right:-7px;width:18px;height:18px;padding:0;border-radius:50%;background:#bd4b43;color:#fff;font-size:12px;line-height:18px">×</button></span>').join('');
@@ -515,7 +516,7 @@
           + '<input name="variationPrices" type="number" min="0" required value="'+esc(v.price)+'" placeholder="Price">'
           + '<div class="variation-image-stack">'
           + '<input type="file" class="variation-image-upload" accept="image/*" multiple data-index="'+variationIndex+'" style="width:100%">'
-          + '<input type="text" name="variationImagePaths" value="'+esc((v.images||[]).join(', '))+'" placeholder="variation image paths or urls" style="width:100%">'
+          + '<input type="text" name="variationImagePaths" placeholder="variation image paths or urls" style="width:100%">'
           + '<div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px">'+preview+'</div>'
           + '</div>'
           + '</div></div>';
@@ -534,16 +535,13 @@
         async (form)=>{
           const files=(form.getAll('images')||[]).filter((file)=>file instanceof File && file.size>0);
           const imagePaths=String(form.get('imagePaths')||'').split(',').map((x)=>x.trim()).filter(Boolean);
-          const names=Array.from(document.querySelectorAll('input[name="variationNames"]')).map((node)=>node.value.trim()).filter(Boolean);
-          const prices=Array.from(document.querySelectorAll('input[name="variationPrices"]')).map((node)=>Number(node.value));
-          const variationPathInputs=document.querySelectorAll('input[name="variationImagePaths"]');
-          const variationUploadInputs=document.querySelectorAll('.variation-image-upload');
+          const variationRows=[...document.querySelectorAll('#variationRows .variation-editor-row')];
           const variationItems=[];
-          for(let i=0;i<names.length;i+=1){
-            const variationFiles=variationUploadInputs[i]&&variationUploadInputs[i].files?Array.from(variationUploadInputs[i].files):[];
-            const variationPaths=String(variationPathInputs[i]?.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
-            const uploadedImages=variationFiles.length?await Promise.all(variationFiles.map(fileToDataUrl)):[];
-            variationItems.push({name:names[i],price:Number(prices[i])||0,images:[...new Set([...variationPaths,...uploadedImages].map(sanitizeCmsImageSource).filter(Boolean))]});
+          for(const row of variationRows){
+            const name=row.querySelector('input[name="variationNames"]')?.value.trim()||'';
+            const price=Number(row.querySelector('input[name="variationPrices"]')?.value);
+            const variationPaths=variationPathValues(row.querySelector('input[name="variationImagePaths"]')?.value).map(sanitizeCmsImageSource).filter(Boolean);
+            variationItems.push({name,price:Number(price)||0,images:cleanVariationImageArray([...(row._variation?.images||[]),...variationPaths])});
           }
 
           if(!variationItems.length||variationItems.some((item)=>!item.name||!Number.isFinite(item.price)||item.price<0)){alert('Please add at least one complete variation.'); return false;}
@@ -569,24 +567,26 @@
           row.style.cssText='display:grid;grid-template-columns:1fr 150px 1fr auto;gap:8px;margin-bottom:12px';
           row.innerHTML='<input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><div class="variation-image-stack" style="display:flex;flex-direction:column;gap:6px;min-width:0"><input type="file" class="variation-image-upload" accept="image/*" multiple style="width:100%"><input type="text" name="variationImagePaths" placeholder="variation image paths or urls" style="width:100%"><div class="variation-image-preview" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px"></div></div><button type="button" class="btn danger remove-variation" title="Remove variation">×</button>';
           const variationNumber=rowsContainer.querySelectorAll('.variation-editor-row').length+1;
+          const newVariation={name:'',price:'',images:[]};
           row.innerHTML='<div class="variation-card-heading"><strong>Variation #'+variationNumber+'</strong><button type="button" class="btn danger remove-variation" title="Remove variation">Remove</button></div><div class="variation-card-fields"><input name="variationNames" required placeholder="e.g. White"><input name="variationPrices" type="number" min="0" required placeholder="Price"><div class="variation-image-stack"><input type="file" class="variation-image-upload" accept="image/*" multiple><input type="text" name="variationImagePaths" placeholder="variation image paths or urls"><div class="variation-image-preview"></div></div></div>';
+          row._variation=newVariation;
           rowsContainer.appendChild(row);
+          bindVariationPathField(row);
           const upload=row.querySelector('.variation-image-upload');
-          const pathInput=row.querySelector('input[name="variationImagePaths"]');
           const preview=row.querySelector('.variation-image-preview');
           upload.onchange=async()=>{
             const files=[...(upload.files||[])];
             if(!files.length){return;}
-            let current=String(pathInput.value||'').split(',').map((x)=>x.trim()).filter(Boolean);
-            const urls=await Promise.all(files.map(fileToDataUrl));
-            urls.forEach((url)=>{current=appendVariationImage(current,url);});
-            const merged=[...new Set(current)];
-            pathInput.value=merged.join(', ');
+            const urls=(await Promise.all(files.map(fileToDataUrl))).filter(Boolean);
+            row._variation.images.push(...urls);
+            const merged=cleanVariationImageArray([...row._variation.images,...variationPathValues(row.querySelector('input[name="variationImagePaths"]')?.value)]);
             preview.innerHTML=merged.filter(isValidCmsImage).map((src,imageIndex)=>'<span class="variation-image-chip" style="position:relative;display:inline-flex"><img src="'+getValidImgSrc(src)+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block"><button type="button" class="remove-variation-image" data-image-index="'+imageIndex+'" title="Remove image" style="position:absolute;top:-7px;right:-7px;width:18px;height:18px;padding:0;border-radius:50%;background:#bd4b43;color:#fff;font-size:12px;line-height:18px">×</button></span>').join('');bindVariationImageRemove();
           };
           bindVariationRemove();
         };
       }
+      const initialVariationRows=[...document.querySelectorAll('#variationRows .variation-editor-row')];
+      initialVariationRows.forEach((row,rowIndex)=>{row._variation={...variations[rowIndex],images:cleanVariationImageArray(variations[rowIndex]?.images||[])};bindVariationPathField(row);const upload=row.querySelector('.variation-image-upload');const preview=row.querySelector('.variation-image-preview');const renderPreview=()=>{const images=cleanVariationImageArray([...row._variation.images,...variationPathValues(row.querySelector('input[name="variationImagePaths"]')?.value)]);preview.innerHTML=images.map((src,imageIndex)=>'<span class="variation-image-chip" style="position:relative;display:inline-flex"><img src="'+esc(getValidImgSrc(src))+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid #ddd;display:block"><button type="button" class="remove-variation-image" data-image-index="'+imageIndex+'" title="Remove image" style="position:absolute;top:-7px;right:-7px;width:18px;height:18px;padding:0;border-radius:50%;background:#bd4b43;color:#fff;font-size:12px;line-height:18px">×</button></span>').join('');bindVariationImageRemove();};if(upload)upload.onchange=async()=>{const files=[...(upload.files||[])];if(!files.length)return;const images=(await Promise.all(files.map(fileToDataUrl))).filter(Boolean);row._variation.images.push(...images);renderPreview();};renderPreview();});
       bindVariationRemove();
       bindVariationImageRemove();
     }
