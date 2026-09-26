@@ -4554,19 +4554,24 @@ video {
   }
 
   .faq-item summary {
+    position: relative;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 14px;
+    gap: 0;
+    padding: 12px 42px;
     font-size: 12px;
     line-height: 1.35;
     text-align: center;
   }
 
   .faq-item summary::after {
+    position: absolute;
+    top: 50%;
+    right: 12px;
     width: 24px;
     height: 24px;
     flex: 0 0 24px;
     font-size: 18px;
+    transform: translateY(-50%);
   }
 
   .faq-item p {

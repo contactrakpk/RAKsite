@@ -47,6 +47,7 @@ test('featured products are persisted and rendered in category sliders', async (
   assert.match(cmsHtml, /featuredCount>=6/);
   assert.match(cmsHtml, /is_featured:product\.is_featured===true/);
   assert.match(schemaSql, /ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE/);
+  assert.match(schemaSql, /CREATE POLICY orders_authenticated_update ON orders FOR UPDATE TO authenticated USING \(true\) WITH CHECK \(true\)/);
   assert.match(scriptJs, /product\.is_featured === true/);
   assert.match(scriptJs, /const compact = scrollY > 80/);
   assert.match(scriptJs, /\.slice\(0, 6\)/);

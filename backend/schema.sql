@@ -135,6 +135,8 @@ DROP POLICY IF EXISTS orders_public_insert ON orders;
 CREATE POLICY orders_public_insert ON orders FOR INSERT TO anon, authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS orders_authenticated_select ON orders;
 CREATE POLICY orders_authenticated_select ON orders FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS orders_authenticated_update ON orders;
+CREATE POLICY orders_authenticated_update ON orders FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS orders_authenticated_delete ON orders;
 CREATE POLICY orders_authenticated_delete ON orders FOR DELETE TO authenticated USING (true);
 
