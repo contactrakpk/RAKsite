@@ -13,9 +13,9 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
   const scriptJs = await read('assets/js/script.js');
 
   assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926sliderandfeatured/);
-  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926searchiconfix/);
+  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926searchandmobilefix/);
   assert.match(await read('assets/css/styles.css'), /\.search-box \{[\s\S]*?width: 100%;[\s\S]*?max-width: 180px;[\s\S]*?height: 36px;[\s\S]*?overflow: hidden;/);
-  assert.match(await read('assets/css/styles.css'), /\.search-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px;[\s\S]*?min-width: 16px;[\s\S]*?margin-right: 8px;/);
+  assert.match(await read('assets/css/styles.css'), /\.search-icon \{[\s\S]*?width: 16px !important;[\s\S]*?height: 16px !important;[\s\S]*?min-width: 16px !important;[\s\S]*?max-width: 16px !important;[\s\S]*?flex-shrink: 0;/);
   assert.match(cmsHtml, /assets\/js\/config\.js\?v=20260925schemafix/);
   assert.match(cmsHtml, /error\?\.code==='PGRST204'/);
   assert.match(cmsHtml, /const \{is_featured,\.\.\.fallbackPayload\}=updatePayload/);
@@ -43,7 +43,9 @@ test('featured products are persisted and rendered in category sliders', async (
   assert.match(scriptJs, /product\.is_featured === true/);
   assert.match(scriptJs, /\.slice\(0, 6\)/);
   assert.match(scriptJs, /className = 'trending-row category-products-slider'/);
-  assert.doesNotMatch(scriptJs, /view-all-card|view-all-link/);
+  assert.match(scriptJs, /className = 'category-products-view-all'/);
+  assert.match(scriptJs, /textContent = 'View All →'/);
   assert.match(stylesCss, /\.category-products-slider \{[\s\S]*?display: grid !important/);
-  assert.doesNotMatch(stylesCss, /\.category-products-slider \{[^}]*overflow-x:\s*auto/);
+  assert.match(stylesCss, /@media \(max-width: 768px\) \{[\s\S]*?\.category-products-slider \{[\s\S]*?display: flex !important;[\s\S]*?overflow-x: auto;[\s\S]*?scroll-snap-type: x mandatory;/);
+  assert.match(stylesCss, /\.category-products-view-all \{[\s\S]*?min-width: 140px;[\s\S]*?min-height: 200px;/);
 });
