@@ -994,20 +994,11 @@ const renderTrendingProducts = () => {
 
     const header = document.createElement('div');
     header.className = 'category-header';
-    header.innerHTML = `
-      <h3>${label}</h3>
-      <a href="${href}" class="view-all-link">View all</a>
-    `;
+    header.innerHTML = `<h3>${label}</h3>`;
 
     const row = document.createElement('div');
     row.className = 'trending-row category-products-slider';
     categoryProducts.forEach((product) => row.appendChild(createProductCard(product)));
-    const viewAllCard = document.createElement('a');
-    viewAllCard.className = 'view-all-card';
-    viewAllCard.href = href;
-    viewAllCard.setAttribute('aria-label', `View all ${label.toLowerCase()} products`);
-    viewAllCard.innerHTML = '<span class="view-all-card-icon" aria-hidden="true">&rarr;</span><strong>View All</strong><small>Explore ' + label.toLowerCase() + '</small>';
-    row.appendChild(viewAllCard);
 
     section.appendChild(bannerLink);
     section.appendChild(header);

@@ -40,6 +40,7 @@ test('featured products are persisted and rendered in category sliders', async (
   assert.match(scriptJs, /product\.is_featured === true/);
   assert.match(scriptJs, /\.slice\(0, 6\)/);
   assert.match(scriptJs, /className = 'trending-row category-products-slider'/);
-  assert.match(scriptJs, /className = 'view-all-card'/);
-  assert.match(stylesCss, /\.category-products-slider \{[\s\S]*?overflow-x: auto !important/);
+  assert.doesNotMatch(scriptJs, /view-all-card|view-all-link/);
+  assert.match(stylesCss, /\.category-products-slider \{[\s\S]*?display: grid !important/);
+  assert.doesNotMatch(stylesCss, /\.category-products-slider \{[^}]*overflow-x:\s*auto/);
 });
