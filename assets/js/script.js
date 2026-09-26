@@ -267,6 +267,7 @@ const cartState = {
   items: [],
   shipping: Number(cmsData?.shipping) >= 0 ? Number(cmsData.shipping) : 180
 };
+let cartNotificationTimer;
 
 const API_URL = String(window.RAK_API_URL || '').replace(/\/$/, '');
 const normalizeProducts = (value) => Array.isArray(value) ? value : [];
@@ -1236,10 +1237,16 @@ const renderCategoryPage = async () => {
 };
 
 const renderCartBadge = () => {
+  const count = getCartCount();
   const badgeElements = document.querySelectorAll('.cart-badge');
   badgeElements.forEach((badge) => {
-    const count = getCartCount();
     badge.textContent = String(count);
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+
+  document.querySelectorAll('.cart-count-badge').forEach((badge) => {
+    badge.textContent = String(count);
+    badge.setAttribute('aria-label', `${count} ${count === 1 ? 'item' : 'items'} in cart`);
     badge.style.display = count > 0 ? 'inline-flex' : 'none';
   });
 };
@@ -1265,21 +1272,21 @@ const ensureCartPanel = () => {
     <div class="cart-backdrop" id="cartBackdrop"></div>
     <aside class="cart-panel" id="cartPanel" aria-label="Shopping cart">
       <header>
-        <div>
-          <h2>Your Cart</h2>
-          <p class="panel-subtitle">Your added products are listed here.</p>
+        <div class="cart-header-title">
+          <h2>Shopping Cart</h2>
+          <span class="cart-count-badge" aria-label="0 items in cart">0</span>
         </div>
         <button type="button" class="close-panel" aria-label="Close cart">×</button>
       </header>
       <div class="cart-body" id="cartItems"></div>
-      <div class="summary-panel">
-        <div class="summary-row summary-total-row"><span>Total</span><span class="summary-total" id="cartTotal">PKR 0</span></div>
-        <button type="button" class="checkout-btn">Checkout</button>
-      </div>
       <section class="cart-related-products" aria-labelledby="cartRelatedTitle">
         <h3 id="cartRelatedTitle">You may also like</h3>
         <div class="cart-related-row" id="cartRelatedItems"></div>
       </section>
+      <div class="summary-panel">
+        <div class="summary-row summary-total-row"><span>Total</span><span class="summary-total" id="cartTotal">PKR 0</span></div>
+        <button type="button" class="checkout-btn">Checkout</button>
+      </div>
     </aside>
   `);
 };
@@ -1307,6 +1314,24 @@ const loadCart = () => {
   }
 };
 
+const showCartNotification = () => {
+  let notification = document.getElementById('cartNotification');
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.id = 'cartNotification';
+    notification.className = 'cart-notification';
+    notification.setAttribute('role', 'status');
+    notification.setAttribute('aria-live', 'polite');
+    document.body.appendChild(notification);
+  }
+  notification.textContent = 'Product added to cart successfully';
+  notification.classList.add('is-visible');
+  window.clearTimeout(cartNotificationTimer);
+  cartNotificationTimer = window.setTimeout(() => {
+    notification.classList.remove('is-visible');
+  }, 2600);
+};
+
 const addToCart = (productId, quantity) => {
   const product = products.find((item) => sameProductId(item.id, productId));
   if (!product) return;
@@ -1318,6 +1343,7 @@ const addToCart = (productId, quantity) => {
   }
   saveCart();
   updateCartUI();
+  showCartNotification();
 };
 
 const addProductVariationToCart = (product, variation, quantity) => {
@@ -1330,6 +1356,7 @@ const addProductVariationToCart = (product, variation, quantity) => {
   }
   saveCart();
   updateCartUI();
+  showCartNotification();
 };
 
 const removeFromCart = (productId) => {
@@ -1363,20 +1390,22 @@ const renderCartPanel = () => {
     const itemCategory = categoryMeta.find((category) => category.label === item.category);
     const itemImage = item.images?.[0] || `${window.location.pathname.includes('/pages/') ? '../' : ''}${itemCategory?.banner || heroImageByCategory.shop}`;
     row.innerHTML = `
-      <img src="${itemImage}" alt="${item.name}" />
-      <div class="cart-item-info">
-        <p class="cart-item-title">${item.name}</p>
-        <p class="cart-item-meta">${item.type}${item.selectedVariation ? ` · ${item.selectedVariation}` : ''}</p>
-      </div>
-      <div class="cart-item-side">
-        <div class="cart-item-controls">
-          <button type="button" data-action="decrease" data-id="${item.id}">-</button>
-          <span>${item.quantity}</span>
-          <button type="button" data-action="increase" data-id="${item.id}">+</button>
+      <img class="cart-item-img" src="${itemImage}" alt="${item.name}" />
+      <div class="cart-item-details">
+        <div class="cart-item-info">
+          <p class="cart-item-title">${item.name}</p>
+          <p class="cart-item-meta">${item.type}${item.selectedVariation ? ` · ${item.selectedVariation}` : ''}</p>
         </div>
-        <p class="cart-item-price">PKR ${(item.price * item.quantity).toLocaleString()}</p>
-        <button type="button" class="remove-item-btn" data-action="remove" data-id="${item.id}">×</button>
+        <div class="cart-item-bottom">
+          <p class="cart-item-price">PKR ${(item.price * item.quantity).toLocaleString()}</p>
+          <div class="quantity-picker">
+            <button type="button" data-action="decrease" data-id="${item.id}" aria-label="Decrease ${item.name} quantity">-</button>
+            <span>${item.quantity}</span>
+            <button type="button" data-action="increase" data-id="${item.id}" aria-label="Increase ${item.name} quantity">+</button>
+          </div>
+        </div>
       </div>
+      <button type="button" class="cart-remove-btn" data-action="remove" data-id="${item.id}" aria-label="Remove ${item.name} from cart">×</button>
     `;
     cartList.appendChild(row);
   });
