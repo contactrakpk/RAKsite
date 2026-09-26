@@ -4269,31 +4269,40 @@ video {
   background-color: #ffffff;
 }
 
-.product-card .card-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.product-card .card-image,
+.product-card .product-image,
+.product-card .image-container,
+.product-card .card-img-wrapper,
+.product-card .product-card-img {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   width: 100% !important;
-  height: 200px !important;
-  min-height: 200px !important;
-  margin: 0;
-  padding: 0;
-  position: relative;
-  border: 0;
-  background-color: #f8fafc;
-  overflow: hidden;
+  margin: 0 auto !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-.product-card .card-image img {
+.product-card .card-image {
+  height: 200px !important;
+  min-height: 200px !important;
+  padding: 0;
+  border: 0;
+  background-color: #f8fafc;
+}
+
+.product-card img {
   width: 100% !important;
   height: 100% !important;
-  max-width: 100%;
-  max-height: 200px !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   display: block !important;
   border-radius: 0;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center !important;
   transform: none !important;
+  margin: 0 auto !important;
+  left: 0 !important;
 }
 
 .product-card .card-info {
@@ -4419,7 +4428,11 @@ video {
     flex: 0 1 calc(100% - 50px);
   }
 
-  .product-card .card-image {
+  .product-card .card-image,
+  .product-card .product-image,
+  .product-card .image-container,
+  .product-card .card-img-wrapper,
+  .product-card .product-card-img {
     width: 100% !important;
     height: 130px !important;
     min-height: 130px !important;
@@ -4431,15 +4444,18 @@ video {
     overflow: hidden !important;
   }
 
-  .product-card .card-image img {
+  .product-card img {
     position: relative;
     inset: auto;
     display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: none !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
     object-fit: contain !important;
     object-position: center !important;
+    margin: auto !important;
+    left: 0 !important;
   }
 
   .product-card .product-category {
