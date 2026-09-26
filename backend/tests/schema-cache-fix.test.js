@@ -14,6 +14,9 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
 
   assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926sliderandfeatured/);
   assert.match(cmsHtml, /assets\/js\/config\.js\?v=20260925schemafix/);
+  assert.match(cmsHtml, /error\?\.code==='PGRST204'/);
+  assert.match(cmsHtml, /const \{is_featured,\.\.\.fallbackPayload\}=updatePayload/);
+  assert.match(cmsHtml, /\.eq\('id',product\.id\)/);
   assert.match(configJs, /localhost:8787/);
   assert.match(configJs, /raksite\.pages\.dev|raksite-api\.onrender\.com/);
   assert.match(scriptJs, /product\.short_description \|\| product\.shortDescription \|\| product\.description \|\| product\.fullDescription/);

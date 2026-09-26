@@ -222,9 +222,14 @@
       if(!client || typeof client.from !== 'function')throw new Error('Supabase client unavailable');
       product.variations=(Array.isArray(product.variations)?product.variations:[]).map((variation)=>typeof variation==='string'?{name:variation,images:[]}:({...variation,images:cleanVariationImageArray(variation.images||variation.variation_images)}));
       product.variation_images=cleanVariationImageArray(product.variation_images);
-      const payload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),is_featured:product.is_featured===true,status:'published'};
-      const query=isUuid(product.id)?client.from('products').update(payload).eq('id',product.id).select('id'):client.from('products').insert(payload).select('id');
-      const {data:storedRows,error}=await query;
+      const updatePayload={name:String(product.name||'').trim(),category:String(product.category||'').trim(),short_description:String(product.description||''),description:String(product.fullDescription||product.description||''),is_featured:product.is_featured===true,status:'published'};
+      const saveProduct=(payload)=>isUuid(product.id)?client.from('products').update(payload).eq('id',product.id).select('id'):client.from('products').insert(payload).select('id');
+      let {data:storedRows,error}=await saveProduct(updatePayload);
+      const errorDetails=`${error?.message||''} ${error?.details||''} ${error?.hint||''}`;
+      if(error?.code==='PGRST204'&&/is_featured/i.test(errorDetails)){
+        const {is_featured,...fallbackPayload}=updatePayload;
+        ({data:storedRows,error}=await saveProduct(fallbackPayload));
+      }
       if(error)throw error;
       const stored=storedRows?.[0];
       if(!stored?.id)throw new Error('Supabase did not return the saved product.');
@@ -527,7 +532,7 @@
         + '<div class="field"><label>Product name <span>*</span></label><input name="name" required value="'+esc(p.name)+'"></div>'
         + '<div class="field"><label>Category / page <span>*</span></label><select name="category" required>'+categoryOptions+'</select></div>'
         + '<div class="field full"><label>One-line description <span>*</span></label><input name="description" required value="'+esc(p.description)+'"></div>'
-        + '<div class="field full"><label style="display:flex;align-items:center;gap:8px"><input name="is_featured" type="checkbox" '+(p.is_featured?'checked':'')+' style="width:auto;margin:0"> Featured on Shop Page</label><small style="color:var(--muted)">Choose up to 6 featured products in this category.</small></div>'
+        + '<div class="field full"><label style="display:flex;align-items:center;gap:8px"><input id="isFeaturedCheckbox" name="is_featured" type="checkbox" '+(p.is_featured?'checked':'')+' style="width:auto;margin:0"> Featured on Shop Page</label><small style="color:var(--muted)">Choose up to 6 featured products in this category.</small></div>'
         + '<div class="field full"><label>Product variations <span>*</span></label><div id="variationRows">'+variationRows+'</div><button type="button" class="btn" id="addVariation">+ Add another variation</button></div>'
         + fileFields
         + '<div class="field full"><label>Full product description <span>*</span></label><textarea name="fullDescription" required>'+esc(p.fullDescription||p.description)+'</textarea></div>'
@@ -553,11 +558,14 @@
           const primaryVariationImage=firstVariationImages[0]||'';
           const finalImages=imageData.length?imageData:(primaryVariationImage?[primaryVariationImage]:[]);
           if(!finalImages.length){alert('Please provide at least one product image or upload an image in a variation.'); return false;}
-          const isFeatured=form.get('is_featured')==='on';
-          const categoryKey=String(form.get('category')||'').trim().toLowerCase();
+          const productName=String(form.get('name')||'').trim();
+          const productCategory=String(form.get('category')||'').trim();
+          const productDescription=String(form.get('description')||'').trim();
+          const isFeaturedChecked=document.getElementById('isFeaturedCheckbox')?.checked||false;
+          const categoryKey=productCategory.toLowerCase();
           const featuredCount=data.products.filter((product,productIndex)=>productIndex!==index&&product.is_featured===true&&String(product.category||'').trim().toLowerCase()===categoryKey).length;
-          if(isFeatured&&featuredCount>=6){alert('You can feature up to 6 products per category.');return false;}
-          const record={id:p.id||'rak-'+Date.now(),name:form.get('name'),category:form.get('category'),description:form.get('description'),fullDescription:form.get('fullDescription'),is_featured:isFeatured,variations:variationItems,price:variationItems[0].price||0,images:finalImages};
+          if(isFeaturedChecked&&featuredCount>=6){alert('You can feature up to 6 products per category.');return false;}
+          const record={id:p.id||'rak-'+Date.now(),name:productName,category:productCategory,description:productDescription,fullDescription:String(form.get('fullDescription')||''),is_featured:isFeaturedChecked,variations:variationItems,price:variationItems[0].price||0,images:finalImages};
           if(index===null){data.products.push(record);} else {data.products[index]=record;}
           return {productOnly:true,product:record};
         }
