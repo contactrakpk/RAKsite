@@ -255,9 +255,13 @@ body, p, span, a, li, input, button, .price, .description {
 }
 
 .search-icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  flex: 0 0 16px;
+  margin-right: 8px;
+  display: block;
 }
 
 .logo {
@@ -297,16 +301,17 @@ body, p, span, a, li, input, button, .price, .description {
   z-index: 1401;
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 200px;
-  max-width: 220px;
+  gap: 0;
+  width: 100%;
+  max-width: 180px;
   min-width: 0;
-  height: 40px;
+  height: 36px;
   box-sizing: border-box;
-  background: #f4f4f4;
-  border: 1.5px solid #5e5d5d;
-  padding: 6px 14px;
-  border-radius: 999px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #d7d7d7;
+  padding: 4px 12px;
+  border-radius: 20px;
   transition: border-color 0.3s ease, margin 0.3s ease;
 }
 
@@ -314,23 +319,21 @@ body, p, span, a, li, input, button, .price, .description {
   border: none;
   outline: none;
   background: transparent;
-  color: #000000;
+  color: #333333;
   width: 100%;
   min-width: 0;
-  font-size: 14px;
+  font-size: 13px;
   flex: 1 1 auto;
 }
 
-/* make svg icons inside search use black stroke/fill */
-.search-box .search-icon,
-.search-box svg {
-  color: #000000; /* currentColor for stroke */
-  stroke: #000000;
+.search-box .search-icon {
+  color: #666666;
+  stroke: #666666;
   fill: none;
 }
 
 .search-box input::placeholder {
-  color: #666666;
+  color: #888888;
 }
 
 .search-box.is-open {
@@ -625,8 +628,8 @@ body, p, span, a, li, input, button, .price, .description {
   }
 
   .search-box {
-    width: 200px;
-    max-width: 220px;
+    width: 100%;
+    max-width: 180px;
     min-width: 0;
   }
 
@@ -3249,10 +3252,10 @@ video {
 
   .search-box {
     order: 2;
-    flex: 0 1 200px;
+    flex: 0 1 180px;
     min-width: 0;
-    width: 200px;
-    max-width: 220px;
+    width: 100%;
+    max-width: 180px;
   }
 
   .nav-right .cart-img {

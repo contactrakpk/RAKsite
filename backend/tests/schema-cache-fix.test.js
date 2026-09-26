@@ -13,9 +13,9 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
   const scriptJs = await read('assets/js/script.js');
 
   assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926sliderandfeatured/);
-  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926searchfix/);
-  assert.match(await read('assets/css/styles.css'), /\.search-box \{[\s\S]*?width: 200px;[\s\S]*?max-width: 220px;[\s\S]*?height: 40px;/);
-  assert.match(await read('assets/css/styles.css'), /\.search-icon \{[\s\S]*?width: 18px;[\s\S]*?height: 18px;/);
+  assert.match(indexHtml, /assets\/css\/styles\.css\?v=20260926searchiconfix/);
+  assert.match(await read('assets/css/styles.css'), /\.search-box \{[\s\S]*?width: 100%;[\s\S]*?max-width: 180px;[\s\S]*?height: 36px;[\s\S]*?overflow: hidden;/);
+  assert.match(await read('assets/css/styles.css'), /\.search-icon \{[\s\S]*?width: 16px;[\s\S]*?height: 16px;[\s\S]*?min-width: 16px;[\s\S]*?margin-right: 8px;/);
   assert.match(cmsHtml, /assets\/js\/config\.js\?v=20260925schemafix/);
   assert.match(cmsHtml, /error\?\.code==='PGRST204'/);
   assert.match(cmsHtml, /const \{is_featured,\.\.\.fallbackPayload\}=updatePayload/);
