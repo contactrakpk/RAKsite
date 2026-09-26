@@ -458,6 +458,7 @@ body, p, span, a, li, input, button, .price, .description {
   justify-content: center;
   align-items: center;
   gap: clamp(22px, 3vw, 80px);
+  max-height: 100px;
   padding: 14px 20px 12px;
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid var(--line);
@@ -751,8 +752,8 @@ body, p, span, a, li, input, button, .price, .description {
 
 .category-page-products {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
   padding-bottom: 18px;
 }
 
@@ -3197,11 +3198,13 @@ video {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 12px;
-    padding: 12px 12px 10px;
+    padding: 12px 8px 10px;
   }
 
   .site-header.is-categories-compact .navbar {
     padding-top: 10px;
+    padding-right: 8px;
+    padding-left: 8px;
   }
 
   .nav-left {
@@ -3216,8 +3219,8 @@ video {
     flex: 1 1 auto;
     justify-content: flex-start;
     min-width: 0;
-    margin-left: 6px;
-    margin-right: 6px;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .nav-right {
@@ -3226,7 +3229,7 @@ video {
     transform: none;
     gap: 10px;
     margin-left: auto;
-    margin-right: 8px;
+    margin-right: 0;
   }
 
   .logo {
@@ -3237,8 +3240,8 @@ video {
     font-size: 1.7rem;
     line-height: 0.8;
     transform: scaleY(1.04);
-    margin-left: 6px;
-    margin-right: 6px;
+    margin-left: 0;
+    margin-right: 0;
     text-align: left;
   }
 
@@ -3453,8 +3456,14 @@ video {
     left: 7px;
     right: 7px;
     bottom: 7px;
-    gap: 6px;
-    padding: 5px 7px 5px 5px;
+    gap: 5px;
+    padding: 4px 6px 4px 4px;
+  }
+
+  .video-product-info > div {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .video-product-thumb {
@@ -3464,12 +3473,18 @@ video {
   }
 
   .video-product-info h3 {
-    font-size: 10px;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .video-product-info p {
-    margin-top: 2px;
-    font-size: 9px;
+    margin-top: 1px;
+    font-size: 8px;
+    line-height: 1.1;
+    white-space: nowrap;
   }
 
   .reviews-section {
@@ -4298,7 +4313,7 @@ video {
   max-height: 100% !important;
   display: block !important;
   border-radius: 0;
-  object-fit: contain !important;
+  object-fit: cover !important;
   object-position: center !important;
   transform: none !important;
   margin: 0 auto !important;
@@ -4414,18 +4429,24 @@ video {
   }
 
   .site-header .nav-left .search-box {
-    width: 100%;
+    width: 90vw;
     max-width: none;
     min-width: 0;
+    height: 34px;
+    margin-left: calc((100% - 90vw) / 2);
+    margin-right: calc((100% - 90vw) / 2);
     transition: all 0.3s ease;
   }
 
   .site-header:not(.is-categories-compact) .nav-left .search-box {
-    flex: 0 1 100%;
+    flex: 0 0 90vw;
   }
 
   .site-header.is-categories-compact .nav-left .search-box {
     flex: 0 1 calc(100% - 50px);
+    width: auto;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .product-card .card-image,
@@ -4481,5 +4502,81 @@ video {
 
   .product-card .card-image .card-image-secondary {
     display: none !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .category-page-products .product-card {
+    min-width: 0;
+    border-radius: 6px;
+  }
+
+  .category-page-products .card-image {
+    height: 108px !important;
+    min-height: 108px !important;
+  }
+
+  .category-page-products .card-info {
+    gap: 1px !important;
+    padding: 6px 5px 5px !important;
+  }
+
+  .category-page-products .product-name {
+    min-height: 11px !important;
+    margin-bottom: 0 !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+  }
+
+  .category-page-products .product-category,
+  .category-page-products .product-description {
+    font-size: 7px !important;
+    line-height: 1.2 !important;
+  }
+
+  .category-page-products .product-price {
+    margin-top: 2px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-page-products .card-image {
+    height: 98px !important;
+    min-height: 98px !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .faq-section h2 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .faq-item summary {
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .faq-item summary::after {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    font-size: 18px;
+  }
+
+  .faq-item p {
+    padding: 0 14px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .product-category-gardening .category-products-slider {
+    gap: 6px;
   }
 }

@@ -709,7 +709,10 @@ const renderWhatsAppButton = () => {
 
   const updateHeaderState = () => {
     const scrollY = window.scrollY;
-    const compact = scrollY > 80;
+    const isCompact = header.classList.contains('is-categories-compact');
+    const compact = isCompact ? scrollY > 40 : scrollY > 80;
+    if (compact === isCompact) return;
+
     header.classList.toggle('is-categories-compact', compact);
 
     if (!compact && header.classList.contains('categories-open')) {
@@ -972,7 +975,7 @@ const renderTrendingProducts = () => {
       .slice(0, 6);
 
     const section = document.createElement('div');
-    section.className = 'product-category-section';
+    section.className = `product-category-section product-category-${label.toLowerCase()}`;
 
     const bannerImage = document.createElement('img');
     bannerImage.className = `category-banner${bannerClass ? ` ${bannerClass}` : ''}`;
@@ -1071,7 +1074,7 @@ const renderCategoryPage = async () => {
   const category = categoryMeta.find((item) => item.key === categoryKey);
   if (!category) return;
 
-  const categoryProducts = products.filter((product) => String(product.category || '').toUpperCase() === category.label).slice(0, 5);
+  const categoryProducts = products.filter((product) => String(product.category || '').toUpperCase() === category.label);
   const productsContainer = document.getElementById('categoryProducts');
   if (productsContainer) {
     productsContainer.innerHTML = '';
