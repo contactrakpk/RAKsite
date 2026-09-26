@@ -4269,10 +4269,7 @@ video {
   background-color: #ffffff;
 }
 
-.category-page-products .product-card .card-image,
-.trending-row .product-card .card-image,
-.related-row .product-card .card-image,
-.cart-related-row .product-card .card-image {
+.product-card .card-image {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4292,10 +4289,10 @@ video {
   height: 100% !important;
   max-width: 100%;
   max-height: 200px !important;
-  display: block;
+  display: block !important;
   border-radius: 0;
-  object-fit: contain !important;
-  object-position: center;
+  object-fit: cover !important;
+  object-position: center !important;
   transform: none !important;
 }
 
@@ -4352,6 +4349,15 @@ video {
 }
 
 @media (max-width: 768px) {
+  .product-card {
+    border-radius: 10px !important;
+  }
+
+  .product-card .card-info {
+    gap: 2px !important;
+    padding: 8px 10px !important;
+  }
+
   .site-header .navbar {
     width: 90% !important;
     max-width: 90% !important;
@@ -4413,33 +4419,25 @@ video {
     flex: 0 1 calc(100% - 50px);
   }
 
-  .category-page-products .product-card .card-image,
-  .category-products-slider .product-card .card-image,
-  .related-row .product-card .card-image,
-  .cart-related-row .product-card .card-image {
-    height: auto !important;
-    aspect-ratio: 1 / 1;
-    min-height: 120px !important;
-    max-height: 160px !important;
+  .product-card .card-image {
+    width: 100% !important;
+    height: 140px !important;
+    min-height: 140px !important;
+    max-height: none !important;
   }
 
-  .category-page-products .product-card .card-image img,
-  .category-products-slider .product-card .card-image img,
-  .related-row .product-card .card-image img,
-  .cart-related-row .product-card .card-image img {
+  .product-card .card-image img {
     position: relative;
     inset: auto;
-    display: block;
+    display: block !important;
     width: 100% !important;
-    height: auto !important;
-    max-height: 160px !important;
-    object-fit: contain !important;
+    height: 100% !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    object-position: center !important;
   }
 
-  .category-page-products .product-card .card-image .card-image-secondary,
-  .category-products-slider .product-card .card-image .card-image-secondary,
-  .related-row .product-card .card-image .card-image-secondary,
-  .cart-related-row .product-card .card-image .card-image-secondary {
+  .product-card .card-image .card-image-secondary {
     display: none;
   }
 }
