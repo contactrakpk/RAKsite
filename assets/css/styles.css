@@ -2992,7 +2992,6 @@ body, p, span, a, li, input, button, .price, .description {
   .review-card-header time {
     font-size: 9px;
   }
-
   .review-card p {
     min-height: 64px;
     margin: 12px 0;
@@ -4184,6 +4183,70 @@ video {
   .trending-row .product-price {
     font-size: 9px !important;
   }
+}
+
+.category-products-slider {
+  display: flex !important;
+  overflow-x: auto !important;
+  scroll-behavior: smooth;
+  gap: 12px;
+  padding: 10px 5px 20px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.category-products-slider::-webkit-scrollbar {
+  height: 6px;
+}
+
+.category-products-slider::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.category-products-slider .product-card {
+  flex: 0 0 calc(16.666% - 10px);
+  min-width: 190px;
+  max-width: 220px;
+  scroll-snap-align: start;
+}
+
+.view-all-card {
+  flex: 0 0 160px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f8f9fa;
+  border: 2px dashed #111;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  padding: 20px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  text-decoration: none;
+  color: #111;
+}
+
+.view-all-card:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.view-all-card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.view-all-card strong {
+  font-size: 16px;
+}
+
+.view-all-card small {
+  font-size: 12px;
 }
 
 @media (max-width: 780px) {

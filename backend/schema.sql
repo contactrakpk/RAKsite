@@ -22,10 +22,14 @@ CREATE TABLE IF NOT EXISTS products (
   category TEXT NOT NULL,
   short_description TEXT NOT NULL,
   description TEXT NOT NULL,
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS product_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

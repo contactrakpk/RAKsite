@@ -965,8 +965,11 @@ const renderTrendingProducts = () => {
   container.innerHTML = '';
 
   categoryMeta.forEach(({ label, href, banner, bannerClass }) => {
-    const categoryProducts = products.filter((product) => String(product.category || '').toUpperCase() === label).slice(0, 5);
-    if (categoryProducts.length === 0) return;
+    const allCategoryProducts = products.filter((product) => String(product.category || '').toUpperCase() === label);
+    if (allCategoryProducts.length === 0) return;
+    const categoryProducts = allCategoryProducts
+      .filter((product) => product.is_featured === true || product.is_featured === 1 || String(product.is_featured).toLowerCase() === 'true')
+      .slice(0, 6);
 
     const section = document.createElement('div');
     section.className = 'product-category-section';
@@ -997,8 +1000,14 @@ const renderTrendingProducts = () => {
     `;
 
     const row = document.createElement('div');
-    row.className = 'trending-row';
+    row.className = 'trending-row category-products-slider';
     categoryProducts.forEach((product) => row.appendChild(createProductCard(product)));
+    const viewAllCard = document.createElement('a');
+    viewAllCard.className = 'view-all-card';
+    viewAllCard.href = href;
+    viewAllCard.setAttribute('aria-label', `View all ${label.toLowerCase()} products`);
+    viewAllCard.innerHTML = '<span class="view-all-card-icon" aria-hidden="true">&rarr;</span><strong>View All</strong><small>Explore ' + label.toLowerCase() + '</small>';
+    row.appendChild(viewAllCard);
 
     section.appendChild(bannerLink);
     section.appendChild(header);

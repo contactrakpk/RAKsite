@@ -12,7 +12,7 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
   const configJs = await read('assets/js/config.js');
   const scriptJs = await read('assets/js/script.js');
 
-  assert.match(indexHtml, /assets\/js\/script\.js\?v=20260925shortdesc/);
+  assert.match(indexHtml, /assets\/js\/script\.js\?v=20260926sliderandfeatured/);
   assert.match(cmsHtml, /assets\/js\/config\.js\?v=20260925schemafix/);
   assert.match(configJs, /localhost:8787/);
   assert.match(configJs, /raksite\.pages\.dev|raksite-api\.onrender\.com/);
@@ -22,4 +22,21 @@ test('schema-safe ordering, cache busting, and loader recovery are configured', 
   assert.match(scriptJs, /runSupabaseSimpleQuery\('products', '\*'/);
   assert.match(scriptJs, /forceHideLoader|AbortController|timed out/);
   assert.match(scriptJs, /return \[\];/);
+});
+
+test('featured products are persisted and rendered in category sliders', async () => {
+  const cmsHtml = await read('cms.html');
+  const schemaSql = await read('backend/schema.sql');
+  const scriptJs = await read('assets/js/script.js');
+  const stylesCss = await read('assets/css/styles.css');
+
+  assert.match(cmsHtml, /name="is_featured"/);
+  assert.match(cmsHtml, /featuredCount>=6/);
+  assert.match(cmsHtml, /is_featured:product\.is_featured===true/);
+  assert.match(schemaSql, /ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE/);
+  assert.match(scriptJs, /product\.is_featured === true/);
+  assert.match(scriptJs, /\.slice\(0, 6\)/);
+  assert.match(scriptJs, /className = 'trending-row category-products-slider'/);
+  assert.match(scriptJs, /className = 'view-all-card'/);
+  assert.match(stylesCss, /\.category-products-slider \{[\s\S]*?overflow-x: auto !important/);
 });
