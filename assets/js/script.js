@@ -634,7 +634,7 @@ const renderSearchResults = (query, resultsContainer) => {
   }
 
   const matches = products.filter((product) =>
-    String(product.name || '').toLowerCase().includes(normalizedQuery)
+    String(product.name || '').trim().toLowerCase().startsWith(normalizedQuery)
   );
 
   const resultMarkup = (product) => `
