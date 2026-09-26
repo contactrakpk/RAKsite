@@ -307,7 +307,7 @@ body, p, span, a, li, input, button, .price, .description {
   min-width: 0;
   height: 30px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   background: #ffffff;
   border: 1px solid #d7d7d7;
   padding: 4px 12px;
