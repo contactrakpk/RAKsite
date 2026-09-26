@@ -56,6 +56,51 @@
     @media(max-width:1050px){.video-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:700px){.video-library-grid{grid-template-columns:1fr}.video-card-media{height:190px}.video-library-head .btn{width:auto}.video-card-actions .btn{font-size:12px}}
     .orders-tabs{display:flex;gap:8px;margin:0 0 16px;border-bottom:1px solid var(--line)}.order-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:9px 9px 0 0;background:transparent;color:var(--muted);font-weight:700}.order-tab.active{background:#e8f1e4;color:var(--green-dark);box-shadow:inset 0 -2px var(--green)}.order-tab-count{min-width:20px;padding:2px 6px;border-radius:999px;background:rgba(47,107,79,.12);color:var(--green-dark);font-size:11px;text-align:center}.order-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.order-actions .btn{min-width:132px}
+    .catalog-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px}
+    .catalog-filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(150px,.55fr) minmax(140px,.5fr);gap:10px;flex:1;min-width:0}
+    .catalog-search{position:relative;display:block;min-width:0}
+    .catalog-search input,.catalog-filter{width:100%;height:42px;padding:0 13px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;font-size:13px;outline:none;transition:border-color .18s ease,box-shadow .18s ease}
+    .catalog-search input{padding-left:40px}
+    .catalog-search input:focus,.catalog-filter:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .catalog-search-icon{position:absolute;left:14px;top:50%;width:13px;height:13px;border:2px solid #64748b;border-radius:50%;transform:translateY(-60%);pointer-events:none}
+    .catalog-search-icon:after{position:absolute;right:-5px;bottom:-3px;width:6px;height:2px;background:#64748b;content:"";transform:rotate(45deg)}
+    .catalog-add{display:inline-flex;align-items:center;justify-content:center;min-height:42px;flex:0 0 auto;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease}
+    .catalog-add:hover{transform:translateY(-1px) scale(1.02);box-shadow:0 8px 18px rgba(47,107,79,.18)}
+    .catalog-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+    .catalog-table{width:100%;min-width:860px;border-collapse:separate;border-spacing:0;background:#fff}
+    .catalog-table th,.catalog-table td{padding:12px 16px;text-align:left;vertical-align:middle}
+    .catalog-table th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid #e2e8f0}
+    .catalog-table td{border-bottom:1px solid #e2e8f0;color:#334155;font-size:13px;transition:background-color .16s ease}
+    .catalog-table tbody tr:last-child td{border-bottom:0}
+    .catalog-table tbody tr:hover td{background:#f1f5f9}
+    .catalog-product-cell{display:flex;align-items:center;gap:12px;min-width:210px}
+    .catalog-product-thumb{width:44px;height:44px;flex:0 0 44px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;object-fit:contain;padding:3px}
+    .catalog-product-copy{display:flex;min-width:0;flex-direction:column;gap:4px}
+    .catalog-product-copy strong{overflow:hidden;color:#0f172a;font-size:13px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+    .catalog-product-copy span{color:#64748b;font-size:12px}
+    .catalog-chip{display:inline-flex;align-items:center;max-width:100%;padding:5px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;line-height:1.2;white-space:nowrap}
+    .catalog-variations{display:flex;flex-wrap:wrap;gap:5px;max-width:230px}
+    .catalog-price{color:#0f172a;font-weight:700;white-space:nowrap}
+    .catalog-status{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+    .catalog-status.published{background:#dcfce7;color:#15803d}
+    .catalog-status.draft{background:#f1f5f9;color:#475569}
+    .catalog-row-actions{display:flex;align-items:center;gap:7px}
+    .catalog-action{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 10px;border:1px solid transparent;border-radius:7px;font-size:12px;font-weight:700;transition:background-color .18s ease,color .18s ease,transform .18s ease}
+    .catalog-action:hover{transform:translateY(-1px)}
+    .catalog-action.edit{background:#eff6ff;color:#1d4ed8}
+    .catalog-action.edit:hover{background:#dbeafe}
+    .catalog-action.delete{background:#fef2f2;color:#b91c1c}
+    .catalog-action.delete:hover{background:#fee2e2}
+    .catalog-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px}
+    .catalog-page-controls{display:flex;align-items:center;gap:10px}
+    .catalog-page-btn{min-height:34px;padding:0 12px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#334155;font-size:12px;font-weight:600;transition:background-color .16s ease,border-color .16s ease}
+    .catalog-page-btn:hover:not(:disabled){border-color:#94a3b8;background:#f8fafc}
+    .catalog-page-btn:disabled{cursor:not-allowed;opacity:.45}
+    .catalog-filter:focus-visible,.catalog-search input:focus-visible,.catalog-add:focus-visible,.catalog-action:focus-visible,.catalog-page-btn:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:900px){.catalog-filters{grid-template-columns:minmax(0,1fr) minmax(145px,.65fr) minmax(135px,.6fr)}}
+    @media(max-width:700px){.catalog-toolbar{align-items:stretch;flex-direction:column}.catalog-filters{grid-template-columns:1fr 1fr}.catalog-search{grid-column:1/-1}.catalog-add{align-self:flex-end}.catalog-table{min-width:860px}}
+    @media(max-width:420px){.catalog-filters{grid-template-columns:1fr}.catalog-search{grid-column:auto}.catalog-add{align-self:stretch;width:100%}.catalog-pagination{align-items:flex-start;flex-direction:column}.catalog-page-controls{width:100%;justify-content:space-between}}
   </style>
 </head>
 <body>
@@ -106,7 +151,47 @@
 
       <section class="view" id="orders"><div class="panel"><div class="panel-head"><div><h2>Customer orders</h2><p>Review customer details, delivery address, items, payment and order totals.</p></div><span class="badge" id="ordersCount">0 orders</span></div><div class="orders-tabs" role="tablist" aria-label="Order status"><button type="button" class="order-tab active" data-order-view="new" role="tab" aria-selected="true">New orders <span class="order-tab-count" data-order-count="new">0</span></button><button type="button" class="order-tab" data-order-view="processing" role="tab" aria-selected="false">Processing orders <span class="order-tab-count" data-order-count="processing">0</span></button></div><div id="ordersList"></div></div></section>
 
-      <section class="view" id="products"><div class="panel"><div class="panel-head"><div><h2>Product catalog</h2><p>Create and maintain the products shown across category pages.</p></div><button class="btn primary" id="addProductBtn">+ Add product</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Product</th><th>Category</th><th>Variation</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="productsTable"></tbody></table></div></div></section>
+      <section class="view" id="products">
+        <div class="panel catalog-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Product catalog</h2>
+              <p>Create and maintain the products shown across category pages.</p>
+            </div>
+          </div>
+          <div class="catalog-toolbar">
+            <div class="catalog-filters">
+              <label class="catalog-search">
+                <span class="catalog-search-icon" aria-hidden="true"></span>
+                <input id="productSearch" type="search" placeholder="Search products by name or SKU..." aria-label="Search products by name or SKU" />
+              </label>
+              <select class="catalog-filter" id="productCategoryFilter" aria-label="Filter by category">
+                <option value="">All Categories</option>
+              </select>
+              <select class="catalog-filter" id="productStatusFilter" aria-label="Filter by status">
+                <option value="">All Status</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+            <button type="button" class="btn primary catalog-add" id="addProductBtn">+ Add product</button>
+          </div>
+          <div class="table-wrap catalog-table-wrap">
+            <table class="data-table catalog-table">
+              <thead><tr><th>Product</th><th>Category</th><th>Variations</th><th>Price</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody id="productsTable"></tbody>
+            </table>
+          </div>
+          <div class="catalog-pagination">
+            <span id="productsCount" aria-live="polite">Showing 0 of 0 products</span>
+            <div class="catalog-page-controls">
+              <button type="button" class="catalog-page-btn" id="productsPrevious" disabled>Previous</button>
+              <span id="productPageInfo">Page 1 of 1</span>
+              <button type="button" class="catalog-page-btn" id="productsNext" disabled>Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="view" id="pages"><div class="panel"><div class="panel-head"><div><h2>Pages, heroes & banners</h2><p>Replace the visual entry points for every storefront page.</p></div><span class="badge">6 pages</span></div><div class="page-tabs" id="pageTabs"></div><div id="pageMediaRows"></div></div></section>
 
@@ -120,7 +205,7 @@
 
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h2 id="modalTitle">Add product</h2><button class="close" id="closeModal">&#215;</button></div><form id="modalForm"></form></div></div><div class="toast" id="toast">Saved</div>
   <script src="assets/js/config.js?v=20260925schemafix"></script>
-  <script src="assets/js/script.js?v=20260926sliderandfeatured"></script>
+  <script src="assets/js/script.js?v=20260926procmstable"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
@@ -440,7 +525,58 @@
     }
     function renderProducts(){ $('#productsTable').innerHTML=data.products.map((p,i)=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(p.images?.[0]||'')}" alt=""><b>${esc(p.name)}</b></div></td><td>${esc(p.category)}</td><td>${(p.variations||[{name:p.variation||'Default'}]).map(v=>esc(typeof v==='string'?v:v.name)).join(', ')}</td><td>PKR ${Number(p.price).toLocaleString()}</td><td><span class="badge">Published</span></td><td><button class="icon-btn edit-product" data-i="${i}" title="Edit">&#9998;</button><button class="icon-btn delete-product" data-i="${i}" title="Delete">&#215;</button></td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">Your catalog is empty.</div></td></tr>';$$('.edit-product').forEach(b=>b.onclick=()=>openProduct(Number(b.dataset.i)));$$('.delete-product').forEach(b=>b.onclick=async()=>{if(confirm('Delete this product?')){await deleteProductByIndex(Number(b.dataset.i))}})}
     const getCmsProductThumbnail=(product)=>{const primary=product.images?.find(Boolean);const cleanedPrimary=sanitizeCmsImageSource(primary);if(cleanedPrimary!==cmsImageFallback)return cleanedPrimary;const variationImage=[...(Array.isArray(product.variation_images)?product.variation_images:[]),...(Array.isArray(product.variations)?product.variations:[])].flatMap(variation=>typeof variation==='string'?[variation]:[variation.image_url,variation.image,...(variation.images||[]),...(variation.variation_images||[])]).map(image=>typeof image==='string'?image:image?.image_url||image?.url||image?.src||image?.image||'').map(sanitizeCmsImageSource).find(image=>image!==cmsImageFallback);return variationImage||cmsImageFallback;};
-    function renderProducts(){ $('#productsTable').innerHTML=data.products.map((p,i)=>`<tr><td><div class="product-mini"><img class="thumb" src="${esc(getCmsProductThumbnail(p))}" alt=""><b>${esc(p.name)}</b></div></td><td>${esc(p.category)}</td><td>${(p.variations||[{name:p.variation||'Default'}]).map(v=>esc(typeof v==='string'?v:v.name)).join(', ')}</td><td>PKR ${Number(p.price).toLocaleString()}</td><td><span class="badge">Published</span></td><td><button class="icon-btn edit-product" data-i="${i}" title="Edit">&#9998;</button><button class="icon-btn delete-product" data-i="${i}" title="Delete">&#215;</button></td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">Your catalog is empty.</div></td></tr>';$$('.edit-product').forEach(b=>b.onclick=()=>openProduct(Number(b.dataset.i)));$$('.delete-product').forEach(b=>b.onclick=async()=>{if(confirm('Delete this product?')){await deleteProductByIndex(Number(b.dataset.i))}})}
+    const productPageSize=10;
+    let productPage=1;
+    const getCatalogStatus=product=>{
+      const status=String(product.status||'').trim().toLowerCase();
+      return status==='draft'||product.is_published===false||product.isPublished===false||product.published===false?'draft':'published';
+    };
+    function renderProducts(){
+      const search=String($('#productSearch')?.value||'').trim().toLowerCase();
+      const category=String($('#productCategoryFilter')?.value||'').toLowerCase();
+      const status=String($('#productStatusFilter')?.value||'').toLowerCase();
+      const filteredProducts=data.products.map((product,index)=>({product,index})).filter(({product})=>{
+        const code=String(product.sku||product.code||product.product_code||product.id||'').toLowerCase();
+        const matchesSearch=!search||String(product.name||'').toLowerCase().includes(search)||code.includes(search);
+        const matchesCategory=!category||String(product.category||'').toLowerCase()===category;
+        const matchesStatus=!status||getCatalogStatus(product)===status;
+        return matchesSearch&&matchesCategory&&matchesStatus;
+      });
+      const pageCount=Math.max(1,Math.ceil(filteredProducts.length/productPageSize));
+      productPage=Math.min(productPage,pageCount);
+      const pageProducts=filteredProducts.slice((productPage-1)*productPageSize,productPage*productPageSize);
+      const rows=pageProducts.map(({product,index})=>{
+        const code=String(product.sku||product.code||product.product_code||product.id||'Not set');
+        const variations=(Array.isArray(product.variations)&&product.variations.length?product.variations:[product.variation||'Default'])
+          .map(variation=>typeof variation==='string'?variation:String(variation?.name||'').trim())
+          .filter(Boolean);
+        const variationTags=variations.map(variation=>`<span class="catalog-chip">${esc(variation)}</span>`).join('');
+        const productStatus=getCatalogStatus(product);
+        const statusLabel=productStatus==='draft'?'Draft':'Published';
+        return `<tr>
+          <td><div class="catalog-product-cell"><img class="catalog-product-thumb" src="${esc(getCmsProductThumbnail(product))}" alt=""><div class="catalog-product-copy"><strong>${esc(product.name)}</strong><span>Code: ${esc(code)}</span></div></div></td>
+          <td><span class="catalog-chip">${esc(product.category||'Uncategorized')}</span></td>
+          <td><div class="catalog-variations">${variationTags||'<span class="catalog-chip">Default</span>'}</div></td>
+          <td><span class="catalog-price">PKR ${Number(product.price||0).toLocaleString()}</span></td>
+          <td><span class="catalog-status ${productStatus}">${statusLabel}</span></td>
+          <td><div class="catalog-row-actions"><button type="button" class="catalog-action edit edit-product" data-i="${index}" title="Edit product" aria-label="Edit ${esc(product.name)}">Edit</button><button type="button" class="catalog-action delete delete-product" data-i="${index}" title="Delete product" aria-label="Delete ${esc(product.name)}">Delete</button></div></td>
+        </tr>`;
+      }).join('');
+      $('#productsTable').innerHTML=rows||`<tr><td colspan="6"><div class="empty">${data.products.length?'No products match your filters.':'Your catalog is empty.'}</div></td></tr>`;
+      $('#productsCount').textContent=`Showing ${pageProducts.length} of ${filteredProducts.length} products`;
+      $('#productPageInfo').textContent=`Page ${productPage} of ${pageCount}`;
+      $('#productsPrevious').disabled=productPage<=1;
+      $('#productsNext').disabled=productPage>=pageCount;
+      $$('.edit-product').forEach(button=>button.onclick=()=>openProduct(Number(button.dataset.i)));
+      $$('.delete-product').forEach(button=>button.onclick=async()=>{if(confirm('Delete this product?'))await deleteProductByIndex(Number(button.dataset.i))});
+    }
+    const categoryFilter=$('#productCategoryFilter');
+    categoryFilter.innerHTML='<option value="">All Categories</option>'+categories.slice(1).map(category=>`<option value="${esc(category)}">${esc(category)}</option>`).join('');
+    $('#productSearch').addEventListener('input',()=>{productPage=1;renderProducts()});
+    categoryFilter.addEventListener('change',()=>{productPage=1;renderProducts()});
+    $('#productStatusFilter').addEventListener('change',()=>{productPage=1;renderProducts()});
+    $('#productsPrevious').addEventListener('click',()=>{if(productPage>1){productPage--;renderProducts()}});
+    $('#productsNext').addEventListener('click',()=>{productPage++;renderProducts()});
     const removeStorageFile=async(url)=>{const match=String(url||'').match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);if(!match)return;const {error}=await _supabase.storage.from(match[1]).remove([decodeURIComponent(match[2])]);if(error)console.warn('Could not remove media object:',error)};
     function renderPages(){ $('#pageTabs').innerHTML=categories.map(c=>`<button class="tab ${c===currentPage?'active':''}" data-page="${c}">${c}</button>`).join('');$$('.tab').forEach(b=>b.onclick=()=>{currentPage=b.dataset.page;renderPages()});const p=data.pages[currentPage]||defaults.pages[currentPage];data.pages[currentPage]=p;$('#pageMediaRows').innerHTML=`<div class="media-row"><div><div class="media-label">${currentPage} hero image</div><div class="media-preview"><img src="${esc(p.hero)}" alt=""><small>Hero</small></div></div><div class="field"><label>Image path or URL</label><input id="heroPath" value="${esc(p.hero)}"></div><label class="upload">Upload replacement<input id="heroFile" type="file" accept="image/*"></label><button class="btn primary" id="saveHero">Save</button><button class="btn danger" id="deleteHero" type="button" title="Delete hero image">X Delete</button></div>${currentPage==='Shop'?'':`<div class="media-row"><div><div class="media-label">${currentPage} banner</div><div class="media-preview"><img src="${esc(p.banner)}" alt=""><small>Banner</small></div></div><div class="field"><label>Image path or URL</label><input id="bannerPath" value="${esc(p.banner)}"></div><label class="upload">Upload replacement<input id="bannerFile" type="file" accept="image/*"></label><button class="btn primary" id="saveBanner">Save</button><button class="btn danger" id="deleteBanner" type="button" title="Delete banner image">X Delete</button></div>`}`;$('#saveHero').onclick=async()=>{try{const file=$('#heroFile').files[0];data.pages[currentPage].hero=file?await fileToDataUrl(file):$('#heroPath').value.trim();if(await save())renderPages()}catch(error){console.error(error);showToast('Unable to save hero image')}};$('#deleteHero').onclick=async()=>{try{await removeStorageFile(p.hero);data.pages[currentPage].hero='';if(await save())renderPages()}catch(error){console.error(error);showToast(`Unable to delete hero image: ${error.message||'check permissions'}`)}};const bf=$('#saveBanner');if(bf)bf.onclick=async()=>{try{const file=$('#bannerFile').files[0];data.pages[currentPage].banner=file?await fileToDataUrl(file):$('#bannerPath').value.trim();if(await save())renderPages()}catch(error){console.error(error);showToast('Unable to save banner image')}};const db=$('#deleteBanner');if(db)db.onclick=async()=>{try{await removeStorageFile(p.banner);data.pages[currentPage].banner='';if(await save())renderPages()}catch(error){console.error(error);showToast(`Unable to delete banner: ${error.message||'check permissions'}`)}};bindFile('#heroFile','#heroPath');bindFile('#bannerFile','#bannerPath')}
     function bindFile(file,target){const input=$(file);if(input)input.onchange=async()=>{const f=input.files[0];if(!f)return;try{$(target).value=await fileToDataUrl(f);showToast('Image loaded; press Save')}catch(error){console.error(error);showToast('Unable to read image')}}}
