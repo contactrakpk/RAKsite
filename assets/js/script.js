@@ -1564,23 +1564,28 @@ const renderCheckoutPage = () => {
       total: subtotal + cartState.shipping
     };
     try {
-      if (!API_URL) throw new Error('The order service is not configured. Please try again later.');
+      const client = initializeSupabaseClient();
+      if (!client || typeof client.from !== 'function') throw new Error('The order service is not configured. Please try again later.');
       const customer = order.customer;
-      const response = await fetch(`${API_URL}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer, items: requestedItems })
-      });
-      const responseBody = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(responseBody.error || 'The order could not be submitted. Please try again.');
-      const savedOrder = {
-        ...order,
-        id: responseBody.order_number || order.id,
-        createdAt: responseBody.created_at || order.createdAt,
-        items: Array.isArray(responseBody.items) ? responseBody.items : order.items,
-        shipping: Number(responseBody.shipping ?? order.shipping),
-        total: Number(responseBody.total ?? order.total)
-      };
+      const { error } = await client
+        .from('orders')
+        .insert([{
+          order_number: order.id,
+          customer_name: customer.name,
+          customer_email: customer.email,
+          customer_phone: customer.phone,
+          address: customer.address,
+          area: customer.area,
+          city: customer.city,
+          notes: customer.notes,
+          payment_method: customer.payment || 'Cash on Delivery',
+          items: order.items,
+          shipping: order.shipping,
+          total: order.total,
+          status: 'new'
+        }]);
+      if (error) throw error;
+      const savedOrder = { ...order };
       const existingOrders = JSON.parse(localStorage.getItem('akWebOrders') || '[]');
       existingOrders.unshift(savedOrder);
       localStorage.setItem('akWebOrders', JSON.stringify(existingOrders));

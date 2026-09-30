@@ -156,6 +156,8 @@ CREATE TABLE IF NOT EXISTS orders (
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS orders_public_insert ON orders;
+CREATE POLICY orders_public_insert ON orders FOR INSERT TO anon, authenticated
+  WITH CHECK (status = 'new' AND shipping >= 0 AND total >= 0);
 DROP POLICY IF EXISTS orders_authenticated_select ON orders;
 CREATE POLICY orders_authenticated_select ON orders FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS orders_authenticated_update ON orders;
