@@ -103,6 +103,16 @@ const initializeSupabaseClient = () => {
   return window._supabase || null;
 };
 
+const waitForSupabaseClient = async (timeout = 10000) => {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const client = initializeSupabaseClient();
+    if (client && typeof client.from === 'function') return client;
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+  throw new Error('Supabase client did not initialize in time.');
+};
+
 const _supabase = initializeSupabaseClient();
 window._supabase = _supabase;
 
@@ -339,18 +349,29 @@ const resolveCardProductPrice = (product = {}) => {
 let supabaseContentLoaded = false;
 const loadSupabaseContent = async () => {
   try {
+    const client = await waitForSupabaseClient();
     const fallbackSettingsResult = { data: [], error: null };
     const fallbackPagesResult = { data: [], error: null };
 
+    const productRequest = (async () => {
+      let result;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        result = await client.from('products').select('*').eq('status', 'published');
+        if (!result.error) return result;
+        if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 300 * (attempt + 1)));
+      }
+      return result;
+    })();
+
     const request = Promise.all([
-      runSupabaseSimpleQuery('products', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
+      productRequest,
       runSupabaseSimpleQuery('product_variations', '*'),
       runSupabaseSimpleQuery('product_images', '*'),
       runSupabaseSimpleQuery('product_variation_images', '*'),
       runSupabaseSimpleQuery('reviews', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
       runSupabaseSimpleQuery('videos', '*', [{ field: 'status', op: 'eq', value: 'published' }]),
-      _supabase && typeof _supabase.from === 'function' ? _supabase.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']) : fallbackSettingsResult,
-      _supabase && typeof _supabase.from === 'function' ? _supabase.from('pages').select('name,hero_url,banner_url') : fallbackPagesResult
+      client.from('settings').select('key,value').in('key', ['shipping_cost', 'announcement']),
+      client.from('pages').select('name,hero_url,banner_url')
     ]);
 
     const [productResult, productVariationResult, productImageResult, productVariationImageResult, reviewResult, videoResult, settingsResult, pageResult] = await Promise.race([
@@ -2073,6 +2094,14 @@ window.addEventListener('storage', (event) => {
 });
 
 if (!isCmsRoute()) {
-  init();
+  const start = () => {
+    initializeSupabaseClient();
+    init();
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
 }
 
